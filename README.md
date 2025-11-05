@@ -2,8 +2,24 @@
 
 > An AI-powered family planning platform with real-time streaming, multi-modal assistance, and production-grade infrastructure.
 
+## 🚀 Deployment Status
+
+**✅ LIVE IN PRODUCTION**
+
+- **Backend**: Deployed on DigitalOcean App Platform
+  - URL: https://parenting-assistant-platform-39b47.ondigitalocean.app
+  - Status: Running with managed PostgreSQL + Redis
+
+- **iOS App**: Distributed via TestFlight
+  - Status: Available for beta testing
+  - Platform: iOS 16+
+  - Distribution: Apple TestFlight
+
+---
+
 ## Table of Contents
 
+- [Deployment Status](#-deployment-status)
 - [Product Overview](#product-overview)
 - [Technical Architecture](#technical-architecture)
 - [AI/LLM Technologies](#aillm-technologies)
@@ -1126,6 +1142,38 @@ databases:
     engine: REDIS
     version: "7"
 ```
+
+### iOS TestFlight Distribution
+
+**Status**: ✅ Live on TestFlight
+
+The iOS app is professionally packaged and distributed through Apple's official beta testing platform.
+
+**Distribution Details**:
+- **Platform**: iOS 16.0+
+- **Distribution Method**: TestFlight (Apple's Beta Testing)
+- **Signing**: Automatic signing with Xcode
+- **App Icon**: 1024x1024 production-ready icon
+- **Bundle ID**: `com.ParentingAssistant.ParentingAssistantiOS`
+
+**TestFlight Features**:
+- Beta testing with up to 10,000 external testers
+- Automatic update notifications
+- Crash reporting and analytics
+- Pre-release testing before App Store submission
+
+**Build Process**:
+1. Archive app in Xcode (Product → Archive)
+2. Distribute to App Store Connect
+3. Wait for processing (5-15 minutes)
+4. Configure build in TestFlight
+5. Invite testers via email
+
+**Current Build**:
+- Features: AI meal planning, chore scheduling, routines
+- Authentication: Apple Sign In with JWT
+- Streaming: Real-time SSE responses from backend
+- Offline Mode: Sample data fallback
 
 ### Makefile Commands
 
