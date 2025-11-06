@@ -258,6 +258,7 @@ LIMIT 8;
 - `tool_result` - Tool execution results
 - `final` - Final structured response
 - `refusal` - Safety layer rejection
+- `quota_exceeded` - Monthly usage quota exceeded (Step 14)
 - `done` - Completion with elapsed time
 - `error` - Error occurred
 
@@ -302,6 +303,65 @@ private func parseBuffer() {
 
 ### Cost Tracking & Budget Enforcement
 
+#### Token Tracking & Usage Analytics
+
+**Real-time Token Tracking**:
+```python
+class ModelRouter:
+    def __init__(self):
+        # Token tracking for the current run
+        self.input_tokens = 0
+        self.output_tokens = 0
+        self.total_tokens = 0
+        self.models_used = {}  # {provider/model: count}
+
+    async def _gen_once(self, provider: str, model: str, params: GenerateParams):
+        # Extract actual token usage from LLM API response
+        usage = result.get("usage", {})
+        input_tokens = usage.get("input_tokens", 0) or usage.get("prompt_tokens", 0)
+        output_tokens = usage.get("output_tokens", 0) or usage.get("completion_tokens", 0)
+
+        # Accumulate tokens across all LLM calls in this request
+        self.input_tokens += input_tokens
+        self.output_tokens += output_tokens
+        self.total_tokens += total_tokens
+
+        # Track which models were used
+        model_key = f"{provider}/{model}"
+        self.models_used[model_key] = self.models_used.get(model_key, 0) + 1
+```
+
+**Database Persistence**:
+```python
+# Persist actual token counts to agent_runs table
+agent_run = AgentRun(
+    user_id=user_id,
+    graph=mode,
+    cost_cents=cost_cents,
+    duration_ms=elapsed,
+    input_tokens=router_instance.input_tokens,
+    output_tokens=router_instance.output_tokens,
+    total_tokens=router_instance.total_tokens,
+    models_used=router_instance.models_used  # {"openai/gpt-4o-mini": 2}
+)
+```
+
+**Usage Quotas**:
+```python
+# Monthly request limits per user (default: 10 requests/month)
+USER_MONTHLY_QUOTA = 10
+
+def check_user_quota(db: Session, user_id: int):
+    month_start = datetime(now.year, now.month, 1)
+    runs_this_month = db.query(func.count(AgentRun.id)).filter(
+        AgentRun.user_id == user_id,
+        AgentRun.created_at >= month_start
+    ).scalar()
+
+    remaining = max(0, USER_MONTHLY_QUOTA - runs_this_month)
+    return {"allowed": remaining > 0, "quota": USER_MONTHLY_QUOTA, "used": runs_this_month}
+```
+
 #### Token Estimation
 ```python
 # Naive estimation: 4 characters ≈ 1 token
@@ -338,8 +398,9 @@ async with aspan("llm.generate", provider=provider, model=model):
 # Captured metrics:
 # - Latency (per-call, end-to-end)
 # - Model metadata (provider, name, version)
-# - Token counts (TODO: parse from API response)
-# - Cost estimates
+# - Token counts (actual from API response - Step 14)
+# - Cost calculations (based on actual usage)
+# - Model usage tracking (which models called how many times)
 ```
 
 #### Metrics Persistence
@@ -352,6 +413,10 @@ CREATE TABLE run_metrics (
     model_meta JSONB,  -- {"mode": "meals", "provider": "anthropic", "model": "claude-3-5-sonnet"}
     created_at TIMESTAMP
 );
+
+-- Token tracking in agent_runs (Step 14)
+-- Actual token counts from LLM API responses, not estimates
+-- Enables per-user usage analytics and cost monitoring
 ```
 
 ---
@@ -401,6 +466,67 @@ GET /v1/rag/search/all?q=positive%20parenting&k=5
 - Filter by content type (safety, discipline, routines, development, tips)
 - Returns ranked results with similarity scores
 
+#### Usage Analytics
+```
+GET /v1/users/{user_id}/usage?days=30
+```
+- Per-user token usage and cost statistics
+- Returns: total_runs, total_tokens, input/output tokens, cost, model breakdown
+
+**Response**:
+```json
+{
+  "user_id": 1,
+  "period_days": 30,
+  "total_runs": 5,
+  "total_tokens": 1780,
+  "input_tokens": 625,
+  "output_tokens": 1155,
+  "total_cost_cents": 5,
+  "total_cost_usd": 0.05,
+  "avg_tokens_per_run": 356.0,
+  "models_used": {
+    "openai/gpt-4o-mini": 10,
+    "anthropic/claude-3-5-sonnet-latest": 2
+  }
+}
+```
+
+```
+GET /v1/admin/stats?days=30
+```
+- Platform-wide usage statistics (admin only)
+- Returns: aggregate stats, top users, model breakdown
+
+**Response**:
+```json
+{
+  "period_days": 30,
+  "total_users": 15,
+  "total_runs": 247,
+  "total_tokens": 89234,
+  "total_cost_cents": 247,
+  "total_cost_usd": 2.47,
+  "top_users": [
+    {"user_id": 1, "total_tokens": 15620, "total_cost_cents": 42}
+  ],
+  "models_breakdown": {
+    "openai/gpt-4o-mini": 380,
+    "anthropic/claude-3-5-sonnet-latest": 114
+  }
+}
+```
+
+```
+GET /v1/admin/dashboard
+```
+- Web-based admin dashboard for monitoring platform usage
+- Real-time metrics: users, requests, tokens, costs
+- Top users table by token usage
+- Model usage breakdown
+- Period selector (7/30/90 days)
+- Auto-refresh functionality
+
 ### Database Schema
 
 #### Core Tables
@@ -428,10 +554,14 @@ CREATE TABLE households (
 CREATE TABLE agent_runs (
     id SERIAL PRIMARY KEY,
     user_id INTEGER REFERENCES users(id),
-    graph VARCHAR(64),  -- e.g., "meals_v1", "chores_v1"
-    state JSONB,        -- Full execution state
+    graph VARCHAR(64),      -- e.g., "meals_v1", "chores_v1"
+    state JSONB,            -- Full execution state
     cost_cents INTEGER,
     duration_ms INTEGER,
+    input_tokens INTEGER,   -- Token tracking (Step 14)
+    output_tokens INTEGER,
+    total_tokens INTEGER,
+    models_used JSONB,      -- {"openai/gpt-4o-mini": 2, "anthropic/claude-3-5-sonnet-latest": 1}
     created_at TIMESTAMP
 );
 ```
@@ -654,8 +784,9 @@ def mint_jwt(user_id: int) -> str:
 - Public key: `secrets/jwt_public.pem` (for verification)
 - Environment variables: `JWT_PRIVATE_PEM`, `JWT_PUBLIC_PEM`
 
-### Rate Limiting
+### Rate Limiting & Usage Quotas
 
+**Short-term Rate Limiting** (Abuse Prevention):
 ```python
 # Redis-backed rate limiter
 RATE_LIMIT_PER_MIN = 30  # 30 requests per minute per IP
@@ -664,6 +795,29 @@ RATE_LIMIT_PER_MIN = 30  # 30 requests per minute per IP
 async def assist_stream(...):
     # Rate limit enforced before handler execution
     pass
+```
+
+**Monthly Usage Quotas** (Cost Management - Step 14):
+```python
+# Per-user monthly request limits
+USER_MONTHLY_QUOTA = 10  # Default: 10 requests per month
+
+@router.post("/assist/stream")
+async def assist_stream(...):
+    # Check quota before processing
+    quota_status = check_user_quota(db, user_id)
+    if not quota_status["allowed"]:
+        # Return quota_exceeded event via SSE
+        yield json.dumps({
+            "event": "quota_exceeded",
+            "data": {
+                "message": f"Monthly quota exceeded. You've used {quota_status['used']}/{quota_status['quota']} requests.",
+                "quota": quota_status["quota"],
+                "used": quota_status["used"],
+                "reset_date": quota_status["reset_date"]
+            }
+        })
+        return
 ```
 
 ### Observability (OpenTelemetry)
@@ -1295,10 +1449,12 @@ jobs:
 - 0-2 years: Block honey, whole nuts, screen time
 - Customizable per domain
 
-**Rate Limiting**:
-- 30 requests per minute per IP
+**Rate Limiting & Usage Quotas**:
+- Short-term: 30 requests per minute per IP
+- Long-term: 10 requests per month per user (Step 14)
 - Redis-backed distributed rate limiting
 - Prevents abuse and runaway costs
+- Quota tracking with automatic reset on first of month
 
 ---
 
@@ -1330,6 +1486,9 @@ jobs:
 - OpenTelemetry tracing
 - Cost tracking and budget caps
 - Latency monitoring per component
+- Actual token tracking from API responses (Step 14)
+- Per-user usage analytics and quotas
+- Platform-wide cost monitoring with admin dashboard
 
 ### Backend Development
 
