@@ -178,13 +178,23 @@ Family profile embedded directly in prompts:
 
 ### RAG (Retrieval-Augmented Generation)
 
+#### Knowledge Base
+
+**39 Total Embeddings** across 6 content types:
+- **Recipes (5)**: Kid-friendly meals with dietary restriction support
+- **Safety (5)**: Choking hazards, home childproofing, emergency preparedness
+- **Discipline (5)**: Positive reinforcement strategies, time-outs, age-appropriate techniques
+- **Routines (5)**: Bedtime routines for ages 0-10, sleep optimization tips
+- **Development (12)**: Comprehensive milestones (0-5 years) with red flags
+- **Tips (7)**: Picky eating solutions, nutritional guidance, parenting strategies
+
 #### Vector Database Implementation
 
 **Storage**: PostgreSQL with pgvector extension
 ```sql
 CREATE TABLE vectors (
     id SERIAL PRIMARY KEY,
-    kind VARCHAR(32),           -- 'recipe', 'memory'
+    kind VARCHAR(32),           -- 'recipe', 'safety', 'discipline', 'routines', 'development', 'tips'
     doc_id VARCHAR(128),         -- Document identifier
     embedding TEXT,              -- Vector as text: "[0.123, 0.456, ...]"
     meta JSONB                   -- Full document metadata
@@ -379,6 +389,17 @@ POST /v1/feedback
 ```
 - Captures user feedback (thumbs up/down, edits)
 - Links to agent runs for quality tracking
+
+#### RAG Search (Knowledge Retrieval)
+```
+GET /v1/rag/search/recipes?q=healthy%20dinner&k=3
+GET /v1/rag/search/knowledge?q=bedtime%20routine&k=3
+GET /v1/rag/search/knowledge?q=choking%20hazards&kind=safety&k=2
+GET /v1/rag/search/all?q=positive%20parenting&k=5
+```
+- Semantic search across recipes and parenting knowledge base
+- Filter by content type (safety, discipline, routines, development, tips)
+- Returns ranked results with similarity scores
 
 ### Database Schema
 
@@ -1419,7 +1440,15 @@ ParentingAssistant/
 │   │   │   ├── model_router/        # LLM abstraction
 │   │   │   ├── orchestrator/        # Planning logic
 │   │   │   ├── tools/               # AI tools (recipes, groceries, etc.)
-│   │   │   ├── rag/                 # Vector search
+│   │   │   ├── rag/                 # Vector search & ingestion
+│   │   │   ├── data/                # RAG knowledge base
+│   │   │   │   ├── seed/            # Parenting knowledge (markdown)
+│   │   │   │   │   ├── safety/      # Choking hazards, home safety
+│   │   │   │   │   ├── discipline/  # Positive strategies, time-outs
+│   │   │   │   │   ├── routines/    # Bedtime, morning routines
+│   │   │   │   │   ├── development/ # Milestones, red flags
+│   │   │   │   │   └── tips/        # Picky eating, nutrition
+│   │   │   │   └── recipes_seed.json
 │   │   │   ├── safety/              # Policy engine
 │   │   │   ├── auth/                # Apple Sign In + JWT
 │   │   │   ├── db/                  # SQLAlchemy models
@@ -1466,8 +1495,8 @@ make migrate
 # Seed sample data
 make seed
 
-# Ingest recipes (RAG)
-make ingest
+# Ingest RAG knowledge base (39 embeddings: recipes + parenting knowledge)
+docker compose exec api python -m gateway.rag.ingest
 
 # Test streaming endpoint
 make test
