@@ -380,6 +380,18 @@ POST /v1/feedback
 - Captures user feedback (thumbs up/down, edits)
 - Links to agent runs for quality tracking
 
+#### Admin & Operations (Secured)
+```
+GET /v1/admin/healthz
+GET /v1/admin/experiments
+GET /v1/admin/costs?days=14
+```
+- **Health Checks**: Comprehensive system health monitoring (DB, Redis, API providers)
+- **Experiment Configuration**: View A/B test variants and sampling rates
+- **Cost Tracking**: Daily cost aggregation with Redis-backed metrics
+- **Security**: JWT authentication + user ID allowlist (`ADMIN_ALLOWLIST_USER_IDS`)
+- **Metrics**: Exports to Prometheus/Grafana for real-time monitoring
+
 ### Database Schema
 
 #### Core Tables
