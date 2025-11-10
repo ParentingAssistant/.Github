@@ -49,7 +49,7 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 - **Family Profiles**: Customizable household preferences (ages, allergies, cuisines)
 - **Smart Grocery Lists**: Automatic consolidation and aisle organization
 - **Notification Integration**: Schedule reminders for chores and routines
-- **Multi-Provider AI**: Fallback between Anthropic Claude and OpenAI GPT models
+- **Multi-Provider AI**: Fallback chains across Anthropic Claude, OpenAI GPT, and open-source models (Together AI, HuggingFace)
 
 ### User Experience
 
@@ -76,12 +76,12 @@ AI Generates Plan in Real-Time → View Results → Schedule Notifications
 │   (Python)      │
 └────────┬────────┘
          │
-    ┌────┴────┬──────────┬─────────┐
-    ▼         ▼          ▼         ▼
-┌────────┐ ┌─────┐  ┌────────┐ ┌─────────┐
-│PostGres│ │Redis│  │Anthropic│ │ OpenAI │
-│+pgvector│ │     │  │ Claude │ │  GPT   │
-└────────┘ └─────┘  └────────┘ └─────────┘
+    ┌────┴────┬──────────┬─────────┬──────────┐
+    ▼         ▼          ▼         ▼          ▼
+┌────────┐ ┌─────┐  ┌────────┐ ┌─────────┐ ┌────────┐
+│PostGres│ │Redis│  │Anthropic│ │ OpenAI │ │  OSS   │
+│+pgvector│ │     │  │ Claude │ │  GPT   │ │Together│
+└────────┘ └─────┘  └────────┘ └─────────┘ └────────┘
 ```
 
 ### Technology Stack
@@ -139,6 +139,23 @@ The platform implements a sophisticated **model router** with automatic failback
 - Vector embeddings for RAG (Retrieval-Augmented Generation)
 - Dimensions: 3072
 - Use case: Recipe similarity search
+
+**Open-Source Models (Together AI / HuggingFace)**
+- Model: Meta Llama 3.1 8B Instruct Turbo
+- Use case: Cost-optimized development and testing
+- Unified routing with `oss/` prefix (e.g., `oss/meta-llama/Llama-3.1-8B-Instruct-Turbo`)
+- Automatic fallback to OpenAI if OSS provider unavailable
+- Cost: ~Free on Together AI free tier, or self-hosted with TGI/vLLM
+
+#### Fallback Chain
+
+```
+Primary Model (Anthropic/OpenAI/OSS)
+  ↓ (on failure)
+Secondary Model (OpenAI GPT-4o-mini)
+  ↓ (on failure)
+Stub/Error Response
+```
 
 ### Prompt Engineering Strategy
 
@@ -1463,7 +1480,9 @@ jobs:
 ### AI/LLM Engineering
 
 ✅ **Multi-Model Orchestration**
-- Implemented fallback chains between Anthropic Claude and OpenAI GPT
+- Implemented fallback chains between Anthropic Claude, OpenAI GPT, and OSS models
+- Unified provider abstraction for proprietary and open-source LLMs
+- Support for Together AI, HuggingFace API, and self-hosted TGI/vLLM
 - Model selection based on task (planning vs synthesis)
 - Budget enforcement and cost optimization
 
