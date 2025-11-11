@@ -195,74 +195,95 @@ Family profile embedded directly in prompts:
 
 ### RAG (Retrieval-Augmented Generation)
 
-#### Knowledge Base
+#### Knowledge Base (Step 16: RAG Ingestion v2)
 
-**39 Total Embeddings** across 6 content types:
-- **Recipes (5)**: Kid-friendly meals with dietary restriction support
-- **Safety (5)**: Choking hazards, home childproofing, emergency preparedness
-- **Discipline (5)**: Positive reinforcement strategies, time-outs, age-appropriate techniques
-- **Routines (5)**: Bedtime routines for ages 0-10, sleep optimization tips
-- **Development (12)**: Comprehensive milestones (0-5 years) with red flags
-- **Tips (7)**: Picky eating solutions, nutritional guidance, parenting strategies
+**15 Document Chunks** across 5 parenting domains using pgvector:
+- **Safety (4 chunks)**: Choking hazards, home childproofing, age-appropriate foods
+- **Development (4 chunks)**: Developmental milestones across age groups, red flags
+- **Discipline (2 chunks)**: Positive discipline strategies and techniques
+- **Sleep/Routines (2 chunks)**: Bedtime routines for toddlers with sleep tips
+- **Tips (3 chunks)**: Picky eating solutions and nutritional guidance
+
+**Technical Details**:
+- **Embeddings**: OpenAI text-embedding-3-large (3072 dimensions)
+- **Chunking**: Word-based segmentation (900 words, 150 overlap, min 15 words)
+- **Ingestion**: Idempotent pipeline with UPSERT on (doc_id, chunk_id)
+- **Search**: Semantic similarity with L2 distance, optional domain filtering
+- **Backward Compatibility**: Existing recipe search functions preserved
 
 #### Vector Database Implementation
 
-**Storage**: PostgreSQL with pgvector extension
+**Storage**: PostgreSQL with pgvector extension (native vector type)
 ```sql
-CREATE TABLE vectors (
-    id SERIAL PRIMARY KEY,
-    kind VARCHAR(32),           -- 'recipe', 'safety', 'discipline', 'routines', 'development', 'tips'
-    doc_id VARCHAR(128),         -- Document identifier
-    embedding TEXT,              -- Vector as text: "[0.123, 0.456, ...]"
-    meta JSONB                   -- Full document metadata
+CREATE TABLE rag_documents (
+    id BIGSERIAL PRIMARY KEY,
+    doc_id TEXT NOT NULL,
+    chunk_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    meta JSONB NOT NULL DEFAULT '{}',
+    embedding vector(3072),     -- Native pgvector type
+    UNIQUE (doc_id, chunk_id)   -- Idempotent ingestion
 );
+
+CREATE INDEX ON rag_documents USING gin (meta);  -- Metadata queries
 ```
 
-#### Embedding Pipeline
+#### Embedding Pipeline (Step 16: Idempotent Ingestion)
 
-**Step 1: Text Preparation**
+**Step 1: Document Chunking**
 ```python
-# Concatenate title + ingredients for semantic richness
-text = f"{recipe['title']}\n" + "\n".join(recipe['ingredients'])
+# Word-based chunking with overlap for context preservation
+chunks = chunk_text(
+    content=markdown_content,
+    chunk_size=900,     # words
+    overlap=150,        # words
+    min_words=15        # minimum chunk size
+)
 ```
 
 **Step 2: Generate Embeddings**
 ```python
 embeddings = await openai_client.embeddings.create(
     model="text-embedding-3-large",
-    input=[text]
+    input=[chunk.content for chunk in chunks]
 )
-vector = embeddings.data[0].embedding  # 3072 dimensions
+vectors = [emb.embedding for emb in embeddings.data]  # 3072 dimensions each
 ```
 
-**Step 3: Store in PostgreSQL**
+**Step 3: Upsert to PostgreSQL (Idempotent)**
 ```python
-# Convert vector to pgvector format
-embedding_str = f"[{','.join(map(str, vector))}]"
-conn.execute(
-    "INSERT INTO vectors (kind, doc_id, embedding, meta) VALUES (:k, :id, :emb, :m)",
-    {"k": "recipe", "id": recipe_id, "emb": embedding_str, "m": json.dumps(recipe)}
-)
+# Native pgvector type with idempotent UPSERT
+sql = """
+    INSERT INTO rag_documents (doc_id, chunk_id, content, meta, embedding)
+    VALUES (%s, %s, %s, %s, %s::vector)
+    ON CONFLICT (doc_id, chunk_id) DO UPDATE
+    SET content = EXCLUDED.content,
+        meta = EXCLUDED.meta,
+        embedding = EXCLUDED.embedding
+"""
+cur.executemany(sql, [
+    (doc_id, i, chunk.content, json.dumps(metadata), str(vector))
+    for i, (chunk, vector) in enumerate(zip(chunks, vectors))
+])
 ```
 
 #### Vector Similarity Search
 
-**Cosine Distance Query**
+**L2 Distance Query with Domain Filtering**
 ```sql
-SELECT meta,
-       (embedding::vector <-> :query_vector::vector) AS distance
-FROM vectors
-WHERE kind = 'recipe'
-ORDER BY embedding::vector <-> :query_vector::vector
-LIMIT 8;
+SELECT content, meta, (embedding <-> %s::vector) AS distance
+FROM rag_documents
+WHERE meta->>'domain' = %s  -- Optional domain filtering
+ORDER BY embedding <-> %s::vector
+LIMIT %s;
 ```
 
 **Retrieval Flow**:
-1. User goal → LLM generates search query
-2. Search query → Embed with text-embedding-3-large
-3. Query vector → Cosine similarity search in pgvector
-4. Top-K recipes → Feed to synthesis LLM
-5. LLM synthesizes final meal plan
+1. User query → Embed with text-embedding-3-large (3072 dims)
+2. Query vector → L2 similarity search in pgvector
+3. Top-K chunks → Optionally filter by domain (safety, development, etc.)
+4. Results → Ranked by distance (lower = more similar)
+5. Semantic content → Feed to LLM for contextual responses
 
 ### Streaming Architecture
 
@@ -583,16 +604,18 @@ CREATE TABLE agent_runs (
 );
 ```
 
-**vectors (pgvector)**
+**rag_documents (pgvector - Step 16)**
 ```sql
-CREATE TABLE vectors (
-    id SERIAL PRIMARY KEY,
-    kind VARCHAR(32),       -- 'recipe', 'memory'
-    doc_id VARCHAR(128),    -- Document identifier
-    embedding TEXT,         -- Vector stored as text
-    meta JSONB              -- Full document
+CREATE TABLE rag_documents (
+    id BIGSERIAL PRIMARY KEY,
+    doc_id TEXT NOT NULL,
+    chunk_id INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    meta JSONB NOT NULL DEFAULT '{}',
+    embedding vector(3072),     -- Native pgvector type (3072 dimensions)
+    UNIQUE (doc_id, chunk_id)   -- Idempotent re-ingestion
 );
-CREATE INDEX ON vectors (kind, doc_id);
+CREATE INDEX ON rag_documents USING gin (meta);  -- JSONB metadata queries
 ```
 
 **feedback**
@@ -1673,7 +1696,7 @@ make migrate
 # Seed sample data
 make seed
 
-# Ingest RAG knowledge base (39 embeddings: recipes + parenting knowledge)
+# Ingest RAG knowledge base (Step 16: 6 files → 15 chunks)
 docker compose exec api python -m gateway.rag.ingest
 
 # Test streaming endpoint
