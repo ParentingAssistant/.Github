@@ -565,6 +565,69 @@ GET /v1/admin/dashboard
 - Period selector (7/30/90 days)
 - Auto-refresh functionality
 
+#### Personalization & Memory API (Step 17)
+
+```
+GET /v1/memory/profile
+```
+- Get or create user profile with household, pantry, schedule, preferences
+- Returns: JSONB fields for household composition, dietary info, cooking preferences
+
+**Response**:
+```json
+{
+  "user_id": 1,
+  "consent_ai": true,
+  "consent_analytics": true,
+  "household": {"children": [{"name": "Alice", "age": 5, "dietary_restrictions": ["peanuts"]}], "adults": 2},
+  "pantry": {"staples": ["rice", "pasta"], "fresh": ["eggs", "milk"]},
+  "schedule": {"dinner_time": "18:00", "bedtime": "20:00"},
+  "preferences": {"cuisine": ["italian", "mexican"], "cooking_time": "30min"}
+}
+```
+
+```
+PATCH /v1/memory/profile
+```
+- Update user profile (partial update)
+- Accepts any subset of: household, pantry, schedule, preferences, consent flags
+
+```
+POST /v1/memory/upsert
+```
+- Create or update a user memory
+- Memory types: fact, preference, interaction, summary
+- Optional TTL (default: 90 days)
+
+**Request**:
+```json
+{
+  "kind": "preference",
+  "key": "favorite_meal",
+  "value": {"meal": "spaghetti carbonara", "reason": "Easy and Alice loves it"},
+  "ttl_days": 90
+}
+```
+
+```
+POST /v1/memory/query
+```
+- Query user memories with filters
+- Filter by: kinds, key_prefix, include_expired
+- Returns: List of memories with creation/expiration dates
+
+```
+DELETE /v1/memory/delete/{mem_id}
+```
+- Delete a specific memory by ID
+- Ownership validated (user can only delete their own memories)
+
+**Features**:
+- **Consent Gates**: All memory writes require `consent_ai: true`
+- **Auto-Expiration**: Memories expire based on TTL (default: MEMORY_TTL_DAYS=90)
+- **Flexible Schema**: JSONB storage for dynamic memory content
+- **Privacy**: Cascade delete on user removal
+
 ### Database Schema
 
 #### Core Tables
@@ -616,6 +679,34 @@ CREATE TABLE rag_documents (
     UNIQUE (doc_id, chunk_id)   -- Idempotent re-ingestion
 );
 CREATE INDEX ON rag_documents USING gin (meta);  -- JSONB metadata queries
+```
+
+**user_profiles (Step 17: Personalization & Memory)**
+```sql
+CREATE TABLE user_profiles (
+    user_id BIGINT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+    created_at TIMESTAMP DEFAULT NOW(),
+    updated_at TIMESTAMP DEFAULT NOW(),
+    consent_ai BOOLEAN DEFAULT true,
+    consent_analytics BOOLEAN DEFAULT true,
+    household JSONB DEFAULT '{}'::jsonb,      -- {"children": [...], "adults": 2}
+    pantry JSONB DEFAULT '{}'::jsonb,         -- {"staples": [...], "fresh": [...]}
+    schedule JSONB DEFAULT '{}'::jsonb,       -- {"dinner_time": "18:00", "bedtime": "20:00"}
+    preferences JSONB DEFAULT '{}'::jsonb     -- {"cuisine": [...], "cooking_time": "30min"}
+);
+```
+
+**user_memories (Step 17: Long-term Memory)**
+```sql
+CREATE TABLE user_memories (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT REFERENCES user_profiles(user_id) ON DELETE CASCADE,
+    kind TEXT NOT NULL,                       -- 'fact', 'preference', 'interaction', 'summary'
+    key TEXT,                                 -- Optional key for organization
+    value JSONB NOT NULL,                     -- Flexible memory content
+    created_at TIMESTAMP DEFAULT NOW(),
+    expires_at TIMESTAMP                      -- TTL for auto-expiration (default: 90 days)
+);
 ```
 
 **feedback**
