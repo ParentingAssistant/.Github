@@ -1865,4 +1865,4 @@ Built by Ahmed M. - Learning AI/LLM engineering through hands-on projects.
 
 ---
 
-**Last Updated**: January 2025
+**Last Updated**: November 2025 (Step 19: Cost & Latency Controls Complete)
