@@ -71,17 +71,31 @@ AI Generates Plan in Real-Time → View Results → Schedule Notifications
 └────────┬────────┘
          │ HTTPS + SSE
          ▼
-┌─────────────────┐
-│  API Gateway    │  FastAPI, Rate Limiting, Auth
-│   (Python)      │
-└────────┬────────┘
+┌─────────────────────────────────────────────────────────┐
+│              FastAPI Gateway                            │
+│  /v1/assist, /v1/memory, /v1/admin                      │
+└────────┬────────────────────────────────────────────────┘
          │
-    ┌────┴────┬──────────┬─────────┐
-    ▼         ▼          ▼         ▼
-┌────────┐ ┌─────┐  ┌────────┐ ┌─────────┐
-│PostGres│ │Redis│  │Anthropic│ │ OpenAI │
-│+pgvector│ │     │  │ Claude │ │  GPT   │
-└────────┘ └─────┘  └────────┘ └─────────┘
+         ▼
+┌─────────────────────────────────────────────────────────┐
+│          Multi-Agent Orchestrator (Step 18)             │
+│  ┌─────────────┐    ┌─────────────┐    ┌──────────┐    │
+│  │   Intent    │───▶│MealPlanner  │    │Routine   │    │
+│  │ Classifier  │    │   Agent     │    │  Agent   │    │
+│  └─────────────┘    └─────────────┘    └──────────┘    │
+│         │           ┌────────────────────────────────┐  │
+│         └──────────▶│  GenericParentingAgent        │  │
+│                     └────────────────────────────────┘  │
+└────────┬────────────────────────────────────────────────┘
+         │
+    ┌────┴────┬──────────┬─────────┬─────────┐
+    ▼         ▼          ▼         ▼         ▼
+┌────────┐ ┌─────┐  ┌────────┐ ┌─────────┐ ┌──────┐
+│PostGres│ │Redis│  │Anthropic│ │ OpenAI │ │Together│
+│+pgvector│ │     │  │ Claude │ │  GPT   │ │  AI   │
+│profiles │ │costs│  │        │ │        │ │  OSS  │
+│memories │ │cache│  │        │ │        │ │       │
+└────────┘ └─────┘  └────────┘ └─────────┘ └──────┘
 ```
 
 ### Technology Stack
@@ -142,7 +156,39 @@ The platform implements a sophisticated **model router** with automatic failback
 
 ### Prompt Engineering Strategy
 
-#### Two-Phase Approach
+#### Multi-Agent Architecture (Step 18)
+
+**Intent-Based Routing**
+
+The platform now uses a sophisticated multi-agent orchestrator that automatically routes user requests to specialized agents:
+
+**Three Specialized Agents:**
+
+1. **MealPlannerAgent**
+   - Handles meal planning and recipe requests
+   - Uses RAG to search recipe database
+   - Generates grocery lists organized by aisle
+   - Planning → Retrieval → Synthesis workflow
+
+2. **RoutineAgent**
+   - Creates age-appropriate daily routines
+   - Specializes in bedtime, morning, and nap schedules
+   - Retrieves routine knowledge from domain-specific RAG
+   - Two-phase: Planning (determine routine type) → Synthesis (generate steps)
+
+3. **GenericParentingAgent**
+   - Handles general parenting questions
+   - Retrieves relevant knowledge across all domains
+   - Synthesizes evidence-based advice
+   - Fallback agent for unclassified requests
+
+**Intent Classification:**
+- Keyword-based routing with mode override support
+- Meal keywords → MealPlannerAgent
+- Routine keywords (bedtime, morning, schedule) → RoutineAgent
+- Everything else → GenericParentingAgent
+
+#### Two-Phase LLM Strategy
 
 **Phase 1: Planning (Low Temperature, Focused)**
 ```python
@@ -152,7 +198,7 @@ User goal: {goal}
 Return a short search query string only, suitable for recipe retrieval
 (e.g., "kid friendly dinners no nuts").
 """
-# Temperature: 0.1, Max tokens: 32, Model: Claude 3.5 Sonnet
+# Temperature: 0.1, Max tokens: 200, Model: OpenAI GPT-4o-mini
 ```
 
 **Phase 2: Synthesis (Moderate Temperature, Creative)**
@@ -161,7 +207,7 @@ prompt = f"""
 Create a concise weekly meal outline using these recipe titles: {titles}.
 Tone: family-friendly, encouraging.
 """
-# Temperature: 0.3, Max tokens: 220, Model: GPT-4o-mini
+# Temperature: 0.3, Max tokens: 800, Model: OpenAI GPT-4o-mini
 ```
 
 #### Context Injection
