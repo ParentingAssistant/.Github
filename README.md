@@ -1187,6 +1187,48 @@ The iOS app is professionally packaged and distributed through Apple's official 
 - Streaming: Real-time SSE responses from backend
 - Offline Mode: Sample data fallback
 
+### Design System Integration (Steps 20-22)
+
+**Status**: ✅ Complete - Automated Figma → Swift Workflow
+
+The platform implements a sophisticated design system workflow that bridges Figma designs to SwiftUI implementation:
+
+**Step 20: Figma API Token Export**
+- Automated extraction of design tokens from Figma files via REST API
+- Python script (`tools/figma_export_tokens.py`) fetches tokens from designated Figma frames
+- Exports to `tokens.json` with structured categories (colors, spacing, radius, typography)
+- Environment-based configuration (FIGMA_ACCESS_TOKEN, FIGMA_FILE_KEY)
+
+**Step 21: Swift Code Generation**
+- Auto-generates `DesignSystem.swift` from `tokens.json`
+- Python script (`tools/gen_designsystem_swift.py`) creates SwiftUI-compatible code
+- Namespace pattern: `DS.Colors.accent`, `DS.Spacing.md`, `DS.Radius.pill`
+- Includes Color hex initializer for Figma color values
+- Type-safe design token access in SwiftUI
+
+**Step 22: Figma Plugin Development**
+- JavaScript plugin for programmatic UI screen generation in Figma
+- Generates 4 production screens: Home, AI Chat, Meal Planner, Bedtime Routine
+- Uses design tokens for consistent styling (colors, spacing, radius)
+- iPhone 15-sized frames (390x844) with auto-layout
+- Reusable components: cards, buttons, bubbles, titles
+
+**Design Token Categories**:
+- **Colors**: 9 tokens (bgPrimary, bgSurface, accent, textPrimary, danger, etc.)
+- **Spacing**: 6 values (xs=4, sm=8, md=12, lg=16, xl=24, xxl=32)
+- **Radius**: 4 corner radius values (sm=8, md=12, lg=16, pill=999)
+- **Typography**: 4 text styles (title, subtitle, body, caption)
+
+**Workflow Pipeline**:
+```
+Figma Design → REST API → tokens.json → DesignSystem.swift → SwiftUI Implementation
+```
+
+**Makefile Commands**:
+- `make figma.tokens` - Export tokens from Figma
+- `make designsystem.swift` - Generate Swift design system
+- `make designsystem.all` - Complete pipeline
+
 ### Makefile Commands
 
 ```makefile
@@ -1374,6 +1416,14 @@ jobs:
 - Secure credential storage
 - JWT handling
 
+✅ **Design System Automation**
+- Figma REST API integration for token extraction
+- Programmatic Figma plugin development (JavaScript)
+- Auto-generated Swift code from design tokens
+- Type-safe design system with namespace pattern
+- SwiftUI Color hex initializer implementation
+- Design-to-code workflow automation
+
 ### DevOps & Infrastructure
 
 ✅ **Containerization**
@@ -1438,6 +1488,16 @@ ParentingAssistant/
 │   │   │   └── observability/       # OpenTelemetry
 │   │   ├── alembic/                 # Database migrations
 │   │   └── pyproject.toml
+│   ├── design/                      # Design system (Steps 20-22)
+│   │   └── figma-plugin-parenting/  # Figma plugin for UI generation
+│   │       ├── manifest.json        # Plugin configuration
+│   │       └── code.js              # Plugin logic (generates 4 screens)
+│   ├── tools/                       # Design token tooling
+│   │   ├── figma_export_tokens.py   # Export tokens from Figma API
+│   │   └── gen_designsystem_swift.py # Generate DesignSystem.swift
+│   ├── ios/DesignSystem/            # iOS design system
+│   │   ├── tokens.json              # Design tokens from Figma
+│   │   └── DesignSystem.swift       # Auto-generated SwiftUI design system
 │   ├── docker-compose.yml
 │   ├── Dockerfile
 │   └── Makefile
@@ -1449,7 +1509,8 @@ ParentingAssistant/
     │   ├── Features/                # Meals, Chores, Routines, Auth, Settings
     │   ├── Services/                # SSEClient, APIClient, Auth, Keychain, Notifications
     │   ├── Models/                  # Data models
-    │   └── Config/                  # AppConfig, FeatureFlags
+    │   ├── Config/                  # AppConfig, FeatureFlags
+    │   └── DesignSystem/            # Auto-generated design tokens (DesignSystem.swift)
     └── ParentingAssistant.xcodeproj
 ```
 
