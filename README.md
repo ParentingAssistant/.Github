@@ -1355,6 +1355,59 @@ Figma Design → REST API → tokens.json → DesignSystem.swift → SwiftUI Imp
 - `make designsystem.swift` - Generate Swift design system
 - `make designsystem.all` - Complete pipeline
 
+### iOS App Integration (Step 24)
+
+**Status**: ✅ Complete - Full Backend Integration
+
+Implemented complete integration of iOS UI with backend streaming API using the design system components:
+
+**AssistClient Wrapper**: High-level Swift client for type-safe agent calls
+```swift
+class AssistClient {
+    func streamChat(prompt: String, userId: Int, jwt: String?,
+                   onUpdate: @escaping (String) -> Void,
+                   onComplete: @escaping (String) -> Void,
+                   onError: @escaping (String) -> Void)
+
+    func generateMealPlan(prompt: String, userId: Int, jwt: String?,
+                         onUpdate: @escaping (String) -> Void,
+                         onComplete: @escaping (MealPlanResponse) -> Void,
+                         onError: @escaping (String) -> Void)
+
+    func generateBedtimeRoutine(prompt: String, age: Int, userId: Int, jwt: String?,
+                               onUpdate: @escaping (String) -> Void,
+                               onComplete: @escaping (RoutineResponse) -> Void,
+                               onError: @escaping (String) -> Void)
+}
+```
+
+**Three Screen Integrations**:
+- **ChatView**: Real-time chat with generic parenting agent (mode: nil)
+  - Streaming text updates with ChatBubble components
+  - Auto-scroll to latest message
+  - Loading indicators during generation
+
+- **MealPlannerView**: Dynamic meal plan generation (mode: "meals")
+  - Real-time meal suggestions streaming
+  - Automatic grocery list consolidation by aisle
+  - Save to family profile integration
+
+- **BedtimeRoutineView**: Bedtime routine creation (mode: "routines")
+  - Age-appropriate step-by-step guidance
+  - Calm, screen-free activity suggestions
+  - Schedule notifications for routine steps
+
+**Swift Model Mapping**: AssistModels.swift mirrors backend Pydantic models
+- `AssistRequest`: User prompt, mode, user ID
+- `MealPlanResponse`: Plan text, grocery list, recipe metadata
+- `RoutineResponse`: Routine steps, duration, age appropriateness
+
+**Thread-Safe Updates**: All UI updates wrapped in `Task { @MainActor in }`
+
+**Error Handling**: Callback-based error handling with user-friendly messages
+
+**Loading States**: Progress indicators and status messages during streaming
+
 ### Makefile Commands
 
 ```makefile
@@ -1538,6 +1591,13 @@ jobs:
 - Figma plugin for programmatic wireframe generation matching SwiftUI components
 - Design System page with button variants (primary/secondary/ghost), card examples, and chat bubbles
 
+✅ **iOS-Backend Integration (Step 24)**
+- AssistClient wrapper for type-safe streaming API calls
+- Real-time streaming integration with three production screens
+- Callback-based async patterns with error handling
+- Swift model mapping mirroring backend Pydantic schemas
+- Thread-safe UI updates with @MainActor
+
 ✅ **Advanced Networking**
 - Custom SSE client with URLSessionDataDelegate
 - Incremental JSON parsing with depth tracking
@@ -1659,8 +1719,8 @@ ParentingAssistant/
 │   │   │   └── DesignSystemComponents.swift  # DSButton, DSCard, ChatBubble
 │   │   ├── AppState/                # Global state (AppSession)
 │   │   ├── Features/                # Home, Chat, MealPlanner, BedtimeRoutine, Meals, Chores, Routines, Auth, Settings
-│   │   ├── Services/                # SSEClient, APIClient, Auth, Keychain, Notifications
-│   │   ├── Models/                  # Data models
+│   │   ├── Services/                # SSEClient, AssistClient, APIClient, Auth, Keychain, Notifications
+│   │   ├── Models/                  # Data models, AssistModels
 │   │   └── Config/                  # AppConfig, FeatureFlags
 │   └── ParentingAssistant.xcodeproj
 │
