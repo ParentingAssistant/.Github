@@ -1531,6 +1531,13 @@ jobs:
 - Navigation patterns (TabView, NavigationStack)
 - Declarative UI with reactive updates
 
+✅ **Design System Implementation (Steps 23A-B)**
+- Centralized design tokens (DesignSystem.swift) with DS.Colors, DS.Spacing, DS.Typography, DS.Radius
+- Reusable SwiftUI components (DSButton, DSCard, ChatBubble)
+- 4 core screens built with design system: Home, Chat, Meal Planner, Bedtime Routine
+- Figma plugin for programmatic wireframe generation matching SwiftUI components
+- Design System page with button variants (primary/secondary/ghost), card examples, and chat bubbles
+
 ✅ **Advanced Networking**
 - Custom SSE client with URLSessionDataDelegate
 - Incremental JSON parsing with depth tracking
@@ -1643,16 +1650,24 @@ ParentingAssistant/
 │   ├── Dockerfile
 │   └── Makefile
 │
-└── parenting-assistant-ios/         # iOS App (Swift/SwiftUI)
-    ├── ParentingAssistant/
-    │   ├── ParentingAssistantApp.swift
-    │   ├── AppState/                # Global state (AppSession)
-    │   ├── Features/                # Meals, Chores, Routines, Auth, Settings
-    │   ├── Services/                # SSEClient, APIClient, Auth, Keychain, Notifications
-    │   ├── Models/                  # Data models
-    │   ├── Config/                  # AppConfig, FeatureFlags
-    │   └── DesignSystem/            # Auto-generated design tokens (DesignSystem.swift)
-    └── ParentingAssistant.xcodeproj
+├── parenting-assistant-ios/         # iOS App (Swift/SwiftUI)
+│   ├── ParentingAssistant/
+│   │   ├── ParentingAssistantApp.swift
+│   │   ├── RootView.swift           # Main TabView navigation
+│   │   ├── DesignSystem/            # Step 23A: Design tokens & components
+│   │   │   ├── DesignSystem.swift   # DS.Colors, DS.Spacing, DS.Typography, DS.Radius
+│   │   │   └── DesignSystemComponents.swift  # DSButton, DSCard, ChatBubble
+│   │   ├── AppState/                # Global state (AppSession)
+│   │   ├── Features/                # Home, Chat, MealPlanner, BedtimeRoutine, Meals, Chores, Routines, Auth, Settings
+│   │   ├── Services/                # SSEClient, APIClient, Auth, Keychain, Notifications
+│   │   ├── Models/                  # Data models
+│   │   └── Config/                  # AppConfig, FeatureFlags
+│   └── ParentingAssistant.xcodeproj
+│
+└── design/                          # Step 23B: Figma plugin
+    └── figma-plugin-parenting/
+        ├── manifest.json
+        └── code.js                  # Generates UI screens & Design System page
 ```
 
 ---
