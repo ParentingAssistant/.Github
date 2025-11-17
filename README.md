@@ -1175,6 +1175,167 @@ The iOS app is professionally packaged and distributed through Apple's official 
 - Streaming: Real-time SSE responses from backend
 - Offline Mode: Sample data fallback
 
+### Design System Integration (Steps 20-22)
+
+**Status**: ✅ Complete - Automated Figma → Swift Workflow
+
+The platform implements a sophisticated design system workflow that bridges Figma designs to SwiftUI implementation:
+
+**Step 20: Figma API Token Export**
+- Automated extraction of design tokens from Figma files via REST API
+- Python script (`tools/figma_export_tokens.py`) fetches tokens from designated Figma frames
+- Exports to `tokens.json` with structured categories (colors, spacing, radius, typography)
+- Environment-based configuration (FIGMA_ACCESS_TOKEN, FIGMA_FILE_KEY)
+
+**Step 21: Swift Code Generation**
+- Auto-generates `DesignSystem.swift` from `tokens.json`
+- Python script (`tools/gen_designsystem_swift.py`) creates SwiftUI-compatible code
+- Namespace pattern: `DS.Colors.accent`, `DS.Spacing.md`, `DS.Radius.pill`
+- Includes Color hex initializer for Figma color values
+- Type-safe design token access in SwiftUI
+
+**Step 22: Figma Plugin Development**
+- JavaScript plugin for programmatic UI screen generation in Figma
+- Generates 4 production screens: Home, AI Chat, Meal Planner, Bedtime Routine
+- Uses design tokens for consistent styling (colors, spacing, radius)
+- iPhone 15-sized frames (390x844) with auto-layout
+- Reusable components: cards, buttons, bubbles, titles
+
+**Design Token Categories**:
+- **Colors**: 9 tokens (bgPrimary, bgSurface, accent, textPrimary, danger, etc.)
+- **Spacing**: 6 values (xs=4, sm=8, md=12, lg=16, xl=24, xxl=32)
+- **Radius**: 4 corner radius values (sm=8, md=12, lg=16, pill=999)
+- **Typography**: 4 text styles (title, subtitle, body, caption)
+
+**Workflow Pipeline**:
+```
+Figma Design → REST API → tokens.json → DesignSystem.swift → SwiftUI Implementation
+```
+
+**Makefile Commands**:
+- `make figma.tokens` - Export tokens from Figma
+- `make designsystem.swift` - Generate Swift design system
+- `make designsystem.all` - Complete pipeline
+
+### SwiftUI Design System Implementation (Step 23A)
+
+**Status**: ✅ Complete - Production-Ready Components
+
+Implemented a comprehensive design system in SwiftUI with reusable components matching the Figma design tokens:
+
+**DesignSystem.swift** - Centralized Design Tokens
+```swift
+enum DS {
+    enum Colors {
+        static let bgPrimary = Color(hex: "#F9FAFB")
+        static let bgSurface = Color(hex: "#FFFFFF")
+        static let accent = Color(hex: "#3B82F6")
+        static let textPrimary = Color(hex: "#1F2937")
+        // ... 5 more colors
+    }
+    enum Spacing {
+        static let xs: CGFloat = 4
+        static let sm: CGFloat = 8
+        static let md: CGFloat = 12
+        // ... 3 more spacing values
+    }
+    enum Typography {
+        static let title = Font.system(size: 24, weight: .bold)
+        static let subtitle = Font.system(size: 18, weight: .semibold)
+        // ... 2 more text styles
+    }
+    enum Radius {
+        static let sm: CGFloat = 8
+        static let md: CGFloat = 12
+        // ... 2 more radius values
+    }
+}
+```
+
+**DesignSystemComponents.swift** - Reusable UI Components
+- **DSButton**: Primary, secondary, and ghost button variants with loading states
+- **DSCard**: Consistent card styling with shadow and radius
+- **ChatBubble**: Sender/receiver variants for chat interfaces
+
+**Four Core Screens**:
+1. **HomeView**: Main navigation hub with feature cards
+2. **ChatView**: Real-time AI chat interface with bubble messages
+3. **MealPlannerView**: Interactive meal planning with grocery list
+4. **BedtimeRoutineView**: Step-by-step routine guidance
+
+All screens use `DS.*` tokens for consistent styling across the app.
+
+### Figma Design System Page (Step 23B)
+
+**Status**: ✅ Complete - Component Library in Figma
+
+Extended the Figma plugin to generate a dedicated Design System page showcasing all components:
+
+**Design System Page Components**:
+- **Buttons Frame**: Primary, secondary, ghost variants with consistent styling
+- **Cards Frame**: Meal card and routine card examples with metadata
+- **Chat Frame**: User bubble (accent color) and assistant bubble (white with border)
+- Components match iOS SwiftUI implementation from Step 23A
+- Page name: "Parenting Assistant – Design System"
+
+**Figma Plugin Usage**:
+- Open Figma Desktop → Plugins → Development → Import plugin from manifest...
+- Navigate to `design/figma-plugin-parenting/manifest.json`
+- Run plugin to generate both "Parenting Assistant UI (Generated)" and "Parenting Assistant – Design System" pages
+
+### iOS App Integration (Step 24)
+
+**Status**: ✅ Complete - Full Backend Integration
+
+Implemented complete integration of iOS UI with backend streaming API using the design system components:
+
+**AssistClient Wrapper**: High-level Swift client for type-safe agent calls
+```swift
+class AssistClient {
+    func streamChat(prompt: String, userId: Int, jwt: String?,
+                   onUpdate: @escaping (String) -> Void,
+                   onComplete: @escaping (String) -> Void,
+                   onError: @escaping (String) -> Void)
+
+    func generateMealPlan(prompt: String, userId: Int, jwt: String?,
+                         onUpdate: @escaping (String) -> Void,
+                         onComplete: @escaping (MealPlanResponse) -> Void,
+                         onError: @escaping (String) -> Void)
+
+    func generateBedtimeRoutine(prompt: String, age: Int, userId: Int, jwt: String?,
+                               onUpdate: @escaping (String) -> Void,
+                               onComplete: @escaping (RoutineResponse) -> Void,
+                               onError: @escaping (String) -> Void)
+}
+```
+
+**Three Screen Integrations**:
+- **ChatView**: Real-time chat with generic parenting agent (mode: nil)
+  - Streaming text updates with ChatBubble components
+  - Auto-scroll to latest message
+  - Loading indicators during generation
+
+- **MealPlannerView**: Dynamic meal plan generation (mode: "meals")
+  - Real-time meal suggestions streaming
+  - Automatic grocery list consolidation by aisle
+  - Save to family profile integration
+
+- **BedtimeRoutineView**: Bedtime routine creation (mode: "routines")
+  - Age-appropriate step-by-step guidance
+  - Calm, screen-free activity suggestions
+  - Schedule notifications for routine steps
+
+**Swift Model Mapping**: AssistModels.swift mirrors backend Pydantic models
+- `AssistRequest`: User prompt, mode, user ID
+- `MealPlanResponse`: Plan text, grocery list, recipe metadata
+- `RoutineResponse`: Routine steps, duration, age appropriateness
+
+**Thread-Safe Updates**: All UI updates wrapped in `Task { @MainActor in }`
+
+**Error Handling**: Callback-based error handling with user-friendly messages
+
+**Loading States**: Progress indicators and status messages during streaming
+
 ### Makefile Commands
 
 ```makefile
@@ -1362,6 +1523,28 @@ jobs:
 - Secure credential storage
 - JWT handling
 
+✅ **Design System Implementation (Steps 23A-B)**
+- Centralized design tokens (DesignSystem.swift) with DS.Colors, DS.Spacing, DS.Typography, DS.Radius
+- Reusable SwiftUI components (DSButton, DSCard, ChatBubble)
+- 4 core screens built with design system: Home, Chat, Meal Planner, Bedtime Routine
+- Figma plugin for programmatic wireframe generation matching SwiftUI components
+- Design System page with button variants (primary/secondary/ghost), card examples, and chat bubbles
+
+✅ **iOS-Backend Integration (Step 24)**
+- AssistClient wrapper for type-safe streaming API calls
+- Real-time streaming integration with three production screens
+- Callback-based async patterns with error handling
+- Swift model mapping mirroring backend Pydantic schemas
+- Thread-safe UI updates with @MainActor
+
+✅ **Design System Automation**
+- Figma REST API integration for token extraction
+- Programmatic Figma plugin development (JavaScript)
+- Auto-generated Swift code from design tokens
+- Type-safe design system with namespace pattern
+- SwiftUI Color hex initializer implementation
+- Design-to-code workflow automation
+
 ### DevOps & Infrastructure
 
 ✅ **Containerization**
@@ -1416,8 +1599,16 @@ ParentingAssistant/
 │   │   ├── gateway/
 │   │   │   ├── main.py              # FastAPI app
 │   │   │   ├── routes/              # API endpoints
+│   │   │   ├── agents/              # Multi-agent orchestrator (Step 18)
+│   │   │   │   ├── orchestrator.py  # Main orchestrator with intent routing
+│   │   │   │   ├── intent.py        # Intent classification
+│   │   │   │   ├── meal_agent.py    # Meal planning agent
+│   │   │   │   ├── routine_agent.py # Daily routine agent
+│   │   │   │   ├── chores_agent.py  # Household chores agent
+│   │   │   │   ├── generic_agent.py # General parenting agent
+│   │   │   │   ├── llm_runtime.py   # Unified LLM interface
+│   │   │   │   └── base.py          # Base agent class
 │   │   │   ├── model_router/        # LLM abstraction
-│   │   │   ├── orchestrator/        # Planning logic
 │   │   │   ├── tools/               # AI tools (recipes, groceries, etc.)
 │   │   │   ├── rag/                 # Vector search
 │   │   │   ├── safety/              # Policy engine
@@ -1426,19 +1617,38 @@ ParentingAssistant/
 │   │   │   └── observability/       # OpenTelemetry
 │   │   ├── alembic/                 # Database migrations
 │   │   └── pyproject.toml
+│   ├── design/                      # Design system (Steps 20-22)
+│   │   └── figma-plugin-parenting/  # Figma plugin for UI generation
+│   │       ├── manifest.json        # Plugin configuration
+│   │       └── code.js              # Plugin logic (generates 4 screens)
+│   ├── tools/                       # Design token tooling
+│   │   ├── figma_export_tokens.py   # Export tokens from Figma API
+│   │   └── gen_designsystem_swift.py # Generate DesignSystem.swift
+│   ├── ios/DesignSystem/            # iOS design system
+│   │   ├── tokens.json              # Design tokens from Figma
+│   │   └── DesignSystem.swift       # Auto-generated SwiftUI design system
 │   ├── docker-compose.yml
 │   ├── Dockerfile
 │   └── Makefile
 │
-└── parenting-assistant-ios/         # iOS App (Swift/SwiftUI)
-    ├── ParentingAssistant/
-    │   ├── ParentingAssistantApp.swift
-    │   ├── AppState/                # Global state (AppSession)
-    │   ├── Features/                # Meals, Chores, Routines, Auth, Settings
-    │   ├── Services/                # SSEClient, APIClient, Auth, Keychain, Notifications
-    │   ├── Models/                  # Data models
-    │   └── Config/                  # AppConfig, FeatureFlags
-    └── ParentingAssistant.xcodeproj
+├── parenting-assistant-ios/         # iOS App (Swift/SwiftUI)
+│   ├── ParentingAssistant/
+│   │   ├── ParentingAssistantApp.swift
+│   │   ├── RootView.swift           # Main TabView navigation
+│   │   ├── DesignSystem/            # Step 23A: Design tokens & components
+│   │   │   ├── DesignSystem.swift   # DS.Colors, DS.Spacing, DS.Typography, DS.Radius
+│   │   │   └── DesignSystemComponents.swift  # DSButton, DSCard, ChatBubble
+│   │   ├── AppState/                # Global state (AppSession)
+│   │   ├── Features/                # Home, Chat, MealPlanner, BedtimeRoutine, Meals, Chores, Routines, Auth, Settings
+│   │   ├── Services/                # SSEClient, AssistClient, APIClient, Auth, Keychain, Notifications
+│   │   ├── Models/                  # Data models, AssistModels
+│   │   └── Config/                  # AppConfig, FeatureFlags
+│   └── ParentingAssistant.xcodeproj
+│
+└── design/                          # Step 23B: Figma plugin
+    └── figma-plugin-parenting/
+        ├── manifest.json
+        └── code.js                  # Generates UI screens & Design System page
 ```
 
 ---
