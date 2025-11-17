@@ -38,8 +38,9 @@
 Parenting Assistant is a comprehensive family planning platform that uses AI to help families with:
 
 1. **Meal Planning** - AI-powered weekly meal plans with grocery lists organized by aisle
-2. **Chore Scheduling** - Smart chore scheduling with notification reminders
+2. **Chore Scheduling** - Intelligent household task planning with family-friendly guidance
 3. **Routine Building** - Age-appropriate routines for children with step-by-step guidance
+4. **Multi-Agent Orchestrator** - Intent-based routing to specialized AI agents for optimal results
 
 ### Key Features
 
@@ -452,39 +453,118 @@ CREATE TABLE feedback (
 );
 ```
 
-### Orchestrator - Simple Planner
+### Multi-Agent Orchestrator (Step 18)
 
-The orchestrator coordinates AI calls, tool execution, and streaming:
+The platform implements a sophisticated multi-agent architecture with intent-based routing:
+
+#### Four Specialized Agents
+
+**1. MealPlannerAgent** - RAG-powered recipe search and meal planning
+```python
+class MealPlannerAgent(BaseAgent):
+    async def run(self, user_id: int, prompt: str, profile: dict, context: dict) -> dict:
+        # Phase 1: Planning - generate search query
+        query = await llm_runtime.generate(planning_prompt, temperature=0.1, max_tokens=32)
+
+        # Phase 2: RAG retrieval
+        recipes = await rag_search(query, domain="recipe", k=8)
+
+        # Phase 3: Synthesis
+        plan_text = await llm_runtime.generate(synthesis_prompt, temperature=0.3, max_tokens=220)
+
+        return {"text": plan_text, "usage": usage, "cost_usd": cost, "meta": {"grocery": ...}}
+```
+
+**2. RoutineAgent** - Age-appropriate daily routine generation
+```python
+class RoutineAgent(BaseAgent):
+    async def run(self, user_id: int, prompt: str, profile: dict, context: dict) -> dict:
+        # Two-phase LLM approach
+        # Planning: Extract routine type, age, duration
+        # Synthesis: Generate step-by-step routine guide
+        return {"text": plan_text, "usage": usage, "cost_usd": cost, "meta": {...}}
+```
+
+**3. ChoresAgent** - Household chore scheduling and task planning
+```python
+class ChoresAgent(BaseAgent):
+    async def run(self, user_id: int, prompt: str, profile: dict, context: dict) -> dict:
+        # Phase 1: Planning - determine chore details (type, frequency, time, duration)
+        # Phase 2: Synthesis - generate actionable chore schedule with family-friendly guidance
+        return {"text": plan_text, "usage": usage, "cost_usd": cost, "meta": {...}}
+```
+
+**4. GenericParentingAgent** - General parenting advice using knowledge base
+```python
+class GenericParentingAgent(BaseAgent):
+    async def run(self, user_id: int, prompt: str, profile: dict, context: dict) -> dict:
+        # RAG retrieval from parenting knowledge base
+        # Domain-filtered search (safety, discipline, development, tips)
+        return {"text": plan_text, "usage": usage, "cost_usd": cost, "meta": {...}}
+```
+
+#### Intent-Based Routing
 
 ```python
-async def plan_meals_stream(goal: str, context: dict, router: ModelRouter):
-    # Step 1: LLM generates search query
-    yield {"event": "token", "data": "Planning meals..."}
-    query = await router.generate(
-        prompt=f"Generate recipe search query for: {goal}",
-        max_tokens=32, temperature=0.1
-    )
+def classify_intent(prompt: str, context: dict) -> Intent:
+    # Check explicit mode in context
+    if context.get("mode") == "chores":
+        return "chores"
 
-    # Step 2: RAG retrieval
-    yield {"event": "tool_call", "data": {"name": "fetch_recipes", "args": {"query": query}}}
-    recipes = await fetch_recipes(query=query, dietary=context["allergies"], k=8)
-    yield {"event": "tool_result", "data": {"count": len(recipes)}}
+    # Keyword matching
+    if any(kw in prompt_lower for kw in ["chore", "clean", "tidy", "organize"]):
+        return "chores"
 
-    # Step 3: Consolidate groceries
-    groceries = consolidate_groceries(recipes)
+    # Route to appropriate agent
+    # meal_planning | routines | chores | generic
+```
 
-    # Step 4: LLM synthesis
-    plan_text = await router.generate(
-        prompt=f"Create weekly meal plan using: {[r.title for r in recipes]}",
-        max_tokens=220, temperature=0.3
-    )
+#### Unified Response Format
 
-    # Step 5: Return final payload
-    yield {"event": "final", "data": {
-        "query": query,
-        "plan_text": plan_text,
-        "grocery": groceries
-    }}
+All agents return a consistent structure:
+```python
+{
+    "text": str,        # Human-readable plan text (displayed in iOS)
+    "usage": {          # Token usage tracking
+        "input_tokens": int,
+        "output_tokens": int,
+        "total_tokens": int
+    },
+    "cost_usd": float,  # Actual cost based on provider pricing
+    "meta": {           # Agent-specific metadata (optional)
+        "grocery": {...},           # MealPlannerAgent
+        "chore_type": "cleaning",   # ChoresAgent
+        "routine_type": "bedtime"   # RoutineAgent
+    }
+}
+```
+
+#### Orchestrator Implementation
+
+```python
+class ParentingOrchestrator:
+    def __init__(self, db: Session):
+        self.db = db
+        self.agents = {
+            "meal_planning": MealPlannerAgent(),
+            "routines": RoutineAgent(),
+            "chores": ChoresAgent(),
+            "generic": GenericParentingAgent(),
+        }
+
+    async def handle_request(self, user_id: int, prompt: str, context: dict):
+        # Classify intent
+        intent = classify_intent(prompt, context)
+
+        # Fetch user profile
+        profile = await fetch_user_profile(user_id)
+
+        # Route to agent
+        agent = self.agents[intent]
+        result = await agent.run(user_id, prompt, profile, context)
+
+        # Return unified response
+        return result
 ```
 
 ### Tools Implementation
@@ -1364,6 +1444,13 @@ jobs:
 - Cost tracking and budget caps
 - Latency monitoring per component
 
+✅ **Multi-Agent Orchestration**
+- Intent-based routing with keyword matching
+- Specialized agents for different domains (meals, chores, routines, generic advice)
+- Unified response format across all agents
+- Two-phase LLM strategy (planning + synthesis)
+- Profile integration for personalized responses
+
 ### Backend Development
 
 ✅ **FastAPI Expertise**
@@ -1478,8 +1565,16 @@ ParentingAssistant/
 │   │   ├── gateway/
 │   │   │   ├── main.py              # FastAPI app
 │   │   │   ├── routes/              # API endpoints
+│   │   │   ├── agents/              # Multi-agent orchestrator (Step 18)
+│   │   │   │   ├── orchestrator.py  # Main orchestrator with intent routing
+│   │   │   │   ├── intent.py        # Intent classification
+│   │   │   │   ├── meal_agent.py    # Meal planning agent
+│   │   │   │   ├── routine_agent.py # Daily routine agent
+│   │   │   │   ├── chores_agent.py  # Household chores agent
+│   │   │   │   ├── generic_agent.py # General parenting agent
+│   │   │   │   ├── llm_runtime.py   # Unified LLM interface
+│   │   │   │   └── base.py          # Base agent class
 │   │   │   ├── model_router/        # LLM abstraction
-│   │   │   ├── orchestrator/        # Planning logic
 │   │   │   ├── tools/               # AI tools (recipes, groceries, etc.)
 │   │   │   ├── rag/                 # Vector search
 │   │   │   ├── safety/              # Policy engine
