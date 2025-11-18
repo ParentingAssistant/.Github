@@ -1408,6 +1408,88 @@ class AssistClient {
 
 **Loading States**: Progress indicators and status messages during streaming
 
+### Save & List AI Artifacts (Step 25)
+
+**Status**: ✅ Complete - Full End-to-End Implementation
+
+Implemented persistent storage for AI-generated artifacts (meal plans and bedtime routines) with complete iOS and backend integration:
+
+**Backend - Artifact Persistence**:
+```python
+# Database Schema
+class AIArtifact(Base):
+    __tablename__ = "ai_artifacts"
+    id: Mapped[int]
+    user_id: Mapped[int]  # FK to users
+    artifact_type: Mapped[str]  # meal_plan, bedtime_routine
+    title: Mapped[str]
+    payload: Mapped[dict]  # JSONB: plan_text, meals, grocery, steps
+    created_at: Mapped[datetime]
+
+# API Endpoints
+POST /v1/artifacts - Create artifact
+GET /v1/artifacts?artifact_type={type}&limit={n} - List artifacts
+GET /v1/artifacts/{id} - Get specific artifact
+```
+
+**iOS - ArtifactsClient**:
+```swift
+class ArtifactsClient {
+    func saveArtifact(type: ArtifactType, title: String,
+                     payload: [String: AnyCodable]) async throws -> Artifact
+
+    func listArtifacts(type: ArtifactType? = nil,
+                      limit: Int = 50) async throws -> [Artifact]
+
+    func getArtifact(id: Int) async throws -> Artifact
+}
+```
+
+**Save Functionality**:
+- **MealPlannerView**: "Save Meal Plan" button with auto-generated title
+  - Payload includes: plan_text, meals array, grocery list by aisle
+  - Success feedback with auto-dismissing green message
+
+- **BedtimeRoutineView**: "Save Routine" button with structured data
+  - Payload includes: plan_text, routine steps with time labels, total duration
+  - Error handling with user-friendly messages
+
+**SavedArtifactsView - List & Detail UI**:
+- **Filter Buttons**: All / Meal Plans / Routines
+- **Artifact Cards**: Type badge, title, date, content preview
+- **Detail View**: Full content display with:
+  - Grocery lists organized by aisle (for meal plans)
+  - Routine steps with time labels and descriptions
+- **Empty State**: Helpful messaging when no items saved
+- **Navigation**: Folder icon in toolbar for quick access from Meals and Routines tabs
+
+**Data Structure**:
+```swift
+enum ArtifactType: String, Codable {
+    case mealPlan = "meal_plan"
+    case bedtimeRoutine = "bedtime_routine"
+}
+
+struct Artifact: Codable, Identifiable {
+    let id: Int
+    let userId: Int
+    let artifactType: ArtifactType
+    let title: String
+    let payload: [String: AnyCodable]
+    let createdAt: Date
+}
+```
+
+**Production Migration**: ✅ Successfully deployed to DigitalOcean (Nov 2025)
+- Table created: `ai_artifacts` with indexes on user_id, artifact_type
+- Idempotent migration with existence checks
+- JSONB payload for flexible structured storage
+
+**User Benefits**:
+- **History & Continuity**: Parents can reference past meal plans and routines
+- **Data Flywheel**: Saved artifacts inform future AI suggestions
+- **Product Value**: Transforms one-time interactions into persistent utility
+
 ### Makefile Commands
 
 ```makefile
@@ -1597,6 +1679,14 @@ jobs:
 - Callback-based async patterns with error handling
 - Swift model mapping mirroring backend Pydantic schemas
 - Thread-safe UI updates with @MainActor
+
+✅ **Artifact Persistence & Data Continuity (Step 25)**
+- REST API client with async/await for artifact CRUD operations
+- Structured JSONB storage for flexible artifact payloads
+- User-scoped data with foreign key constraints
+- SwiftUI list and detail views with filtering
+- One-tap save functionality from agent screens
+- Production database migration with idempotent checks
 
 ✅ **Advanced Networking**
 - Custom SSE client with URLSessionDataDelegate
