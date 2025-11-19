@@ -46,17 +46,19 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 
 - **Real-time AI Streaming**: Server-Sent Events (SSE) for live response generation
 - **Apple Sign In**: Secure authentication with JWT token management
+- **Save & History**: Persistent storage for meal plans and routines with filtering and detail views
 - **Offline Mode**: Full functionality with sample data when AI is disabled
 - **Family Profiles**: Customizable household preferences (ages, allergies, cuisines)
 - **Smart Grocery Lists**: Automatic consolidation and aisle organization
 - **Notification Integration**: Schedule reminders for chores and routines
 - **Multi-Provider AI**: Fallback between Anthropic Claude and OpenAI GPT models
+- **Usage Quotas**: Monthly request limits with clear error messaging
 
 ### User Experience
 
 ```
 Sign In → Configure Family Profile → Choose Feature (Meals/Chores/Routines) →
-AI Generates Plan in Real-Time → View Results → Schedule Notifications
+AI Generates Plan in Real-Time → View Results → Save for Later → Schedule Notifications
 ```
 
 ---
@@ -1281,6 +1283,44 @@ databases:
     version: "7"
 ```
 
+### Secrets Management & Deployment Safety
+
+**Status**: ✅ Production-Ready Backup System
+
+The platform implements a comprehensive secrets management system to protect production credentials and enable disaster recovery:
+
+**Automated Backup System**:
+- **Script**: `.do/backup-secrets.sh` exports and encrypts production secrets
+- **Encryption**: AES-256-CBC with GPG passphrase protection
+- **Storage**: Encrypted backups stored in `~/parenting-assistant-backups/`
+- **Rotation**: Automatically keeps last 10 backups
+- **Version Control**: Encrypted backups committed to repository for disaster recovery
+
+**Critical Safety Rules**:
+- ⚠️ **NEVER use `doctl apps update --spec`** - This command wipes all secret values from production
+- ✅ **Always use DigitalOcean web UI** for secret updates (Settings → App-Level Environment Variables)
+- ✅ **Run backup script before any config changes**
+- ✅ **Test restores periodically** to ensure backups are valid
+
+**Recovery Procedure**:
+```bash
+# Decrypt backup
+openssl enc -aes-256-cbc -d -pbkdf2 \
+    -in ~/parenting-assistant-backups/do-app-spec-TIMESTAMP.yaml.enc \
+    -out /tmp/restored-spec.yaml
+
+# Review before applying
+cat /tmp/restored-spec.yaml
+
+# Apply only if certain (overwrites current config)
+doctl apps update --spec /tmp/restored-spec.yaml <APP_ID>
+
+# Clean up plaintext
+rm /tmp/restored-spec.yaml
+```
+
+**Documentation**: Comprehensive recovery procedures in `.do/README-SECRETS.md`
+
 ### iOS TestFlight Distribution
 
 **Status**: ✅ Live on TestFlight
@@ -1308,10 +1348,11 @@ The iOS app is professionally packaged and distributed through Apple's official 
 5. Invite testers via email
 
 **Current Build**:
-- Features: AI meal planning, chore scheduling, routines
+- Features: AI meal planning, chore scheduling, routines, artifact saving & history
 - Authentication: Apple Sign In with JWT
 - Streaming: Real-time SSE responses from backend
 - Offline Mode: Sample data fallback
+- Data Persistence: Save and retrieve meal plans and routines
 
 ### Design System Integration (Steps 20-22)
 
@@ -1484,6 +1525,11 @@ struct Artifact: Codable, Identifiable {
 - Table created: `ai_artifacts` with indexes on user_id, artifact_type
 - Idempotent migration with existence checks
 - JSONB payload for flexible structured storage
+
+**iOS Bug Fixes** (Jan 2025):
+- **Quota Exceeded Handling**: Added `quotaExceeded` SSE event support with user-friendly error messages
+- **URL Encoding Fix**: Fixed query parameter encoding bug in APIClient (was causing 404 errors on artifact listing)
+- **Dynamic Auth State**: Fixed authentication state capture issue - clients now use computed properties to read auth dynamically
 
 **User Benefits**:
 - **History & Continuity**: Parents can reference past meal plans and routines
