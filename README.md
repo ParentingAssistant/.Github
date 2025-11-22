@@ -37,7 +37,7 @@
 
 Parenting Assistant is a comprehensive family planning platform that uses AI to help families with:
 
-1. **Meal Planning** - AI-powered weekly meal plans with grocery lists organized by aisle
+1. **Meal Planning** - AI-powered weekly meal plans with automatic grocery lists organized by aisle (Step 29: Complete)
 2. **Chore Scheduling** - Intelligent household task planning with family-friendly guidance
 3. **Routine Building** - Age-appropriate routines for children with step-by-step guidance
 4. **Multi-Agent Orchestrator** - Intent-based routing to specialized AI agents for optimal results
@@ -46,7 +46,7 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 
 - **Real-time AI Streaming**: Server-Sent Events (SSE) for live response generation
 - **Apple Sign In**: Secure authentication with JWT token management
-- **Save & History**: Persistent storage for meal plans and routines with filtering and detail views
+- **Save & History**: Persistent storage for meal plans (with grocery lists) and routines with filtering and detail views
 - **Offline Mode**: Full functionality with sample data when AI is disabled
 - **Family Profiles**: Customizable household preferences (ages, allergies, cuisines)
 - **Smart Grocery Lists**: Automatic consolidation and aisle organization
