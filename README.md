@@ -40,7 +40,8 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 1. **Meal Planning** - AI-powered weekly meal plans with automatic grocery lists organized by aisle (Step 29: Complete)
 2. **Chore Scheduling** - Intelligent household task planning with family-friendly guidance
 3. **Routine Building** - Age-appropriate routines for children with step-by-step guidance
-4. **Multi-Agent Orchestrator** - Intent-based routing to specialized AI agents for optimal results
+4. **Household Profiles** - Manage family composition with default adults and structured kids data (Step 30: Complete)
+5. **Multi-Agent Orchestrator** - Intent-based routing to specialized AI agents for optimal results
 
 ### Key Features
 
