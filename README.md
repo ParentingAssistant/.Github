@@ -41,15 +41,17 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 2. **Chore Scheduling** - Intelligent household task planning with family-friendly guidance
 3. **Routine Building** - Age-appropriate routines for children with step-by-step guidance
 4. **Household Profiles** - Manage family composition with default adults and structured kids data (Step 30: Complete)
-5. **Multi-Agent Orchestrator** - Intent-based routing to specialized AI agents for optimal results
+5. **Personalized AI** - Profile-aware planning with allergy safety and memory-based recommendations (Step 31: Complete)
+6. **Multi-Agent Orchestrator** - Intent-based routing to specialized AI agents for optimal results
 
 ### Key Features
 
 - **Real-time AI Streaming**: Server-Sent Events (SSE) for live response generation
-- **Apple Sign In**: Secure authentication with JWT token management
+- **Apple Sign In**: Secure authentication with JWT token management and automatic refresh
 - **Save & History**: Persistent storage for meal plans (with grocery lists) and routines with filtering and detail views
 - **Offline Mode**: Full functionality with sample data when AI is disabled
 - **Family Profiles**: Customizable household preferences (ages, allergies, cuisines)
+- **Personalized Planning**: AI remembers preferences and respects safety-critical allergies
 - **Smart Grocery Lists**: Automatic consolidation and aisle organization
 - **Notification Integration**: Schedule reminders for chores and routines
 - **Multi-Provider AI**: Fallback between Anthropic Claude and OpenAI GPT models
@@ -1537,6 +1539,117 @@ struct Artifact: Codable, Identifiable {
 - **Data Flywheel**: Saved artifacts inform future AI suggestions
 - **Product Value**: Transforms one-time interactions into persistent utility
 
+### Assistant Personal Memory & Profile-Aware Planning (Step 31)
+
+**Status**: ✅ Complete - Personalized AI with Safety-Critical Features
+
+Implemented comprehensive personalization layer that enables AI agents to remember user context and generate truly personalized recommendations with safety-critical features:
+
+**Profile Normalization**:
+- **Canonical Structure**: Guaranteed consistent profile format with default values
+- **Default Adults**: New profiles automatically include 1 default adult ("Me", role: "parent")
+- **Structured Arrays**: `adults` and `kids` as proper arrays with name, age, role fields
+- **Database Migration**: Production-ready migration with data backfill from old schema
+- **iOS Integration**: HouseholdProfileView with client-side UUIDs for SwiftUI
+
+**Domain-Scoped Memory Retrieval**:
+```python
+# Fetch only meal-related memories
+memories = await fetch_user_memories(
+    db=db,
+    user_id=user_id,
+    kinds=["preference", "fact"],
+    key_prefix="meal_"  # Only meal-scoped memories
+)
+```
+
+**Personalized Meal Planning - CRITICAL: Allergy Safety**:
+```python
+# MealPlannerAgent checks profile for allergies
+if normalized_profile.get("kids"):
+    allergies = set()
+    for kid in normalized_profile["kids"]:
+        allergies.update(kid.get("dietary_restrictions", []))
+
+    if allergies:
+        prompt += f"\n\n⚠️ CRITICAL ALLERGY SAFETY:\n"
+        prompt += f"Family has allergies to: {', '.join(allergies)}\n"
+        prompt += "DO NOT suggest any recipes containing these ingredients!"
+```
+
+**Personalized Bedtime Routines**:
+- Age-appropriate steps based on child's actual age from profile
+- Custom timing based on household schedule
+- Respects family preferences (screen time, activities)
+
+**Memory Writeback**:
+- Automatic memory creation when artifacts saved
+- Tracks cuisine preferences from meal plans
+- Records routine successes for better future recommendations
+
+**Production Testing**:
+- ✅ Profile normalization verified in production (Nov 2025)
+- ✅ Allergy safety tested: No peanuts in suggestions for peanut allergy profile
+- ✅ Memory retrieval working with domain scoping
+- ✅ Personalized meal plans and routines generated successfully
+
+**User Benefits**:
+- **Safety-First**: AI respects dietary restrictions and allergies
+- **Age-Appropriate**: Routines and meals tailored to children's ages
+- **Continuously Improving**: System learns from saved artifacts
+- **Privacy-Controlled**: All personalization tied to user consent flags
+
+### Automatic Token Refresh
+
+**Status**: ✅ Complete - Seamless Authentication
+
+Implemented automatic JWT token refresh to keep users authenticated without interruption:
+
+**Backend - Token Refresh Endpoint**:
+```python
+POST /v1/auth/refresh-v2
+{
+  "current_token": "eyJ0eXAiOiJKV1QiLCJhbGci..."
+}
+
+# Returns:
+{
+  "user_id": 1,
+  "jwt": "eyJ0eXAiOiJKV1QiLCJhbGci..."  # Fresh token
+}
+```
+
+**iOS - TokenRefreshService**:
+- **Background Monitoring**: Checks token every 15 minutes
+- **Proactive Refresh**: Refreshes 60 minutes before expiry
+- **App Launch Check**: Verifies token on app activation
+- **Graceful Degradation**: Handles refresh failures with fallback to sign-in
+
+**Implementation**:
+```swift
+@MainActor
+final class TokenRefreshService: ObservableObject {
+    private let refreshThresholdMinutes = 60
+
+    func checkAndRefreshIfNeeded() {
+        guard let token = AppSession.shared.jwt else { return }
+        if shouldRefreshToken(token) {
+            Task { await refreshToken() }
+        }
+    }
+
+    func refreshToken() async {
+        // Calls /v1/auth/refresh-v2 endpoint
+        // Updates AppSession with new token
+    }
+}
+```
+
+**User Benefits**:
+- **Seamless Experience**: Never need to re-authenticate manually
+- **Security**: Tokens regularly refreshed for better security
+- **Reliability**: Automatic recovery from expired tokens
+
 ### Makefile Commands
 
 ```makefile
@@ -1656,6 +1769,13 @@ jobs:
 - Two-phase approach (low temp planning → moderate temp synthesis)
 - Context injection with family profiles
 - System vs user prompt separation
+- Safety-critical prompt engineering for allergy handling
+
+✅ **Personalization & Memory (Step 31)**
+- Profile normalization with canonical structure
+- Domain-scoped memory retrieval (meal_, routine_ prefixes)
+- Safety-critical personalization (allergy checking in prompts)
+- Memory writeback for continuous improvement
 
 ✅ **RAG Implementation**
 - Vector embeddings with OpenAI text-embedding-3-large
@@ -1751,7 +1871,9 @@ jobs:
 - Keychain Services API
 - Apple Sign In integration (AuthenticationServices)
 - Secure credential storage
-- JWT handling
+- JWT handling with automatic refresh
+- Timer-based background token monitoring
+- Proactive expiry checking with threshold-based refresh
 
 ✅ **Design System Automation**
 - Figma REST API integration for token extraction
