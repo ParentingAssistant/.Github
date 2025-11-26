@@ -42,7 +42,8 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 3. **Routine Building** - Age-appropriate routines for children with step-by-step guidance
 4. **Household Profiles** - Manage family composition with default adults and structured kids data (Step 30: Complete)
 5. **Personalized AI** - Profile-aware planning with allergy safety and memory-based recommendations (Step 31: Complete)
-6. **Multi-Agent Orchestrator** - Intent-based routing to specialized AI agents for optimal results
+6. **Local Notifications** - Customizable reminders for bedtime routines, meal prep, and chore check-ins (Step 35: Complete)
+7. **Multi-Agent Orchestrator** - Intent-based routing to specialized AI agents for optimal results
 
 ### Key Features
 
@@ -53,7 +54,7 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 - **Family Profiles**: Customizable household preferences (ages, allergies, cuisines)
 - **Personalized Planning**: AI remembers preferences and respects safety-critical allergies
 - **Smart Grocery Lists**: Automatic consolidation and aisle organization
-- **Notification Integration**: Schedule reminders for chores and routines
+- **Local Notifications**: Customizable time-based reminders for bedtime, meals, and chores (Step 35)
 - **Multi-Provider AI**: Fallback between Anthropic Claude and OpenAI GPT models
 - **Usage Quotas**: Monthly request limits with clear error messaging
 
@@ -1598,6 +1599,63 @@ if normalized_profile.get("kids"):
 - **Age-Appropriate**: Routines and meals tailored to children's ages
 - **Continuously Improving**: System learns from saved artifacts
 - **Privacy-Controlled**: All personalization tied to user consent flags
+
+### Local Notifications (Step 35)
+
+**Status**: ✅ Complete - Customizable Time-Based Reminders
+
+Implemented local notification system with customizable reminder times for bedtime routines, meal prep, and chore check-ins:
+
+**NotificationManager Service**:
+```swift
+@MainActor
+class NotificationManager: ObservableObject {
+    @Published var authorizationStatus: UNAuthorizationStatus = .notDetermined
+    @Published var isAuthorized: Bool = false
+
+    // Schedule bedtime reminder
+    func scheduleBedtimeReminder(hour: Int, minute: Int, title: String, body: String, weekdaysOnly: Bool)
+
+    // Schedule meal prep reminder (weekdays only)
+    func scheduleMealReminder(hour: Int, minute: Int, title: String, body: String)
+
+    // Schedule chore check-in reminder (daily)
+    func scheduleChoreReminder(hour: Int, minute: Int, title: String, body: String)
+}
+```
+
+**Three Notification Types**:
+1. **Bedtime Routine Reminder** - Daily or weekday-only reminder at user-selected time
+2. **Meal Prep Reminder** - Weekday reminder (Mon-Fri) for dinner preparation
+3. **Chore Check-In Reminder** - Daily reminder for household tasks
+
+**Smart UX Flow**:
+- **Time Picker First**: DatePicker always visible for easy time selection
+- **Toggle to Schedule**: Toggle enables/disables notification at selected time
+- **Real-time Feedback**: Success messages display formatted time in user's locale
+- **Permission Handling**: Automatic authorization request with graceful fallback
+
+**Category-Based Notifications**:
+```swift
+enum NotificationCategory: String {
+    case bedtimeReminder = "bedtime_reminder"
+    case mealReminder = "meal_reminder"
+    case choreReminder = "chore_reminder"
+}
+```
+
+**Production Features**:
+- ✅ UNCalendarNotificationTrigger for daily/weekly scheduling
+- ✅ Permission state management with real-time UI updates
+- ✅ Cancellation support for toggling off reminders
+- ✅ SwiftUI DatePicker integration with hourAndMinute mode
+- ✅ @MainActor compliance for thread safety
+
+**User Benefits**:
+- **Flexible Timing**: Set reminders at times that work for your family schedule
+- **Visual Feedback**: See exact reminder time before enabling
+- **Easy Management**: Toggle notifications on/off without resetting time
+- **Non-Intrusive**: Clean UI that doesn't interfere with content
 
 ### Automatic Token Refresh
 
