@@ -43,7 +43,8 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 4. **Household Profiles** - Manage family composition with default adults and structured kids data (Step 30: Complete)
 5. **Personalized AI** - Profile-aware planning with allergy safety and memory-based recommendations (Step 31: Complete)
 6. **Local Notifications** - Customizable reminders for bedtime routines, meal prep, and chore check-ins (Step 35: Complete)
-7. **Multi-Agent Orchestrator** - Intent-based routing to specialized AI agents for optimal results
+7. **Calendar Integration** - Add meal plans, bedtime routines, and chore schedules directly to iOS Calendar with EventKit (Step 36: Complete)
+8. **Multi-Agent Orchestrator** - Intent-based routing to specialized AI agents for optimal results
 
 ### Key Features
 
@@ -55,6 +56,7 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 - **Personalized Planning**: AI remembers preferences and respects safety-critical allergies
 - **Smart Grocery Lists**: Automatic consolidation and aisle organization
 - **Local Notifications**: Customizable time-based reminders for bedtime, meals, and chores (Step 35)
+- **Calendar Integration**: Add meal plans, routines, and chores to iOS Calendar with sensible defaults (Step 36)
 - **Multi-Provider AI**: Fallback between Anthropic Claude and OpenAI GPT models
 - **Usage Quotas**: Monthly request limits with clear error messaging
 
@@ -1656,6 +1658,78 @@ enum NotificationCategory: String {
 - **Visual Feedback**: See exact reminder time before enabling
 - **Easy Management**: Toggle notifications on/off without resetting time
 - **Non-Intrusive**: Clean UI that doesn't interfere with content
+
+### Calendar Integration (Step 36)
+
+**Status**: ✅ Complete - iOS Calendar Integration with EventKit
+
+Implemented native iOS Calendar integration allowing users to add meal plans, bedtime routines, and chore schedules directly to their device calendar:
+
+**CalendarManager Service**:
+```swift
+@MainActor
+class CalendarManager: ObservableObject {
+    @Published var authorizationStatus: EKAuthorizationStatus = .notDetermined
+    @Published var isAuthorized: Bool = false
+
+    // Request calendar access if not yet determined
+    func requestAccessIfNeeded() async -> Bool
+
+    // Create meal plan event (default: today 6PM for 1 hour)
+    func createMealEvent(title: String, planText: String, hint: ScheduleHint? = nil) async throws
+
+    // Create bedtime routine event (default: today 8PM for 30 min)
+    func createBedtimeEvent(title: String, planText: String, hint: ScheduleHint? = nil, recurring: Bool = false) async throws
+
+    // Create chore schedule event (default: next Sunday 10AM for 2 hours)
+    func createChoreEvent(title: String, planText: String, hint: ScheduleHint? = nil, recurring: Bool = false) async throws
+
+    // Generic method to create event from saved artifact
+    func createEvent(for artifact: Artifact, kind: ArtifactType, hint: ScheduleHint? = nil) async throws
+}
+```
+
+**UI Integration**:
+- **Add to Calendar Button**: Available in MealPlannerView, BedtimeRoutineView, ChoresView, and SavedArtifactsView
+- **Permission Handling**: Shows button for all states except denied/restricted
+- **Smart Defaults**: Sensible event times based on artifact type
+- **Success/Error Feedback**: Real-time messages with auto-dismiss after 3 seconds
+
+**Event Defaults**:
+- **Meal Plans**: "Dinner Plan" at 6:00 PM today for 1 hour
+- **Bedtime Routines**: "Bedtime Routine" at 8:00 PM today for 30 minutes
+- **Chore Schedules**: "Weekly Chores" next Sunday at 10:00 AM for 2 hours
+
+**Implementation Details**:
+```swift
+// Permission request flow
+let authorized = await calendarManager.requestAccessIfNeeded()
+guard authorized else {
+    // Show error message
+    return
+}
+
+// Create event with sensible defaults
+try await calendarManager.createMealEvent(
+    title: "Dinner Plan",
+    planText: planText
+)
+```
+
+**Production Features**:
+- ✅ EventKit framework integration with EKEventStore
+- ✅ Authorization status tracking with @Published properties
+- ✅ NSCalendarsUsageDescription in Info.plist for App Store compliance
+- ✅ ScheduleHint struct for customizable event timing
+- ✅ CalendarError enum for error handling
+- ✅ Recurring event support for routines and chores
+
+**User Benefits**:
+- **Native Integration**: Events appear in iOS Calendar app alongside other events
+- **Flexible Defaults**: Sensible times that can be customized via ScheduleHint
+- **Opt-In Experience**: Button only shows when permission not denied
+- **Persistent Reminders**: Calendar notifications work even when app is closed
+- **Family Coordination**: Share calendar events across family devices
 
 ### Automatic Token Refresh
 
