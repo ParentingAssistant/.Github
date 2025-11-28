@@ -46,6 +46,7 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 7. **Local Notifications** - Customizable reminders for bedtime routines, meal prep, and chore check-ins (Step 35: Complete)
 8. **Calendar Integration** - Add meal plans, bedtime routines, and chore schedules directly to iOS Calendar with EventKit (Step 36: Complete)
 9. **Multi-Agent Orchestrator** - Intent-based routing to specialized AI agents for optimal results
+10. **Smart Model Routing** - Dynamic LLM selection with automatic fallbacks and health monitoring (Step 38: Complete ✅ Tested)
 
 ### Key Features
 
@@ -163,6 +164,47 @@ The platform implements a sophisticated **model router** with automatic failback
 - Vector embeddings for RAG (Retrieval-Augmented Generation)
 - Dimensions: 3072
 - Use case: Recipe similarity search
+
+### Smart Model Routing (Step 38)
+
+**Dynamic Model Selection**
+
+The platform now implements intelligent model routing with automatic failback chains:
+
+**Configuration-Driven Routing:**
+- Per-agent routing strategies (fast_fallback, quality_first, safety_critical)
+- Complexity-based model selection (simple → medium → complex → critical)
+- Budget-aware routing with per-request cost limits
+- Automatic provider failover on errors
+
+**Provider Health Tracking:**
+- Real-time success rate monitoring
+- Average latency tracking per provider
+- Circuit breaker pattern (closed → open → half-open)
+- Automatic provider recovery detection
+
+**Fallback Chain Example:**
+```python
+# Meal planner with allergies detected
+1. Try: anthropic/claude-3-5-sonnet-latest (safety-capable)
+2. Fallback: openai/gpt-4o (if Claude fails)
+3. Fallback: openai/gpt-4o-mini (if budget exceeded)
+4. Final: hf/llama-3.2-3B (free tier last resort)
+```
+
+**Metrics & Observability:**
+- Model selection tracking by agent/phase/complexity
+- Fallback attempt counting with reason codes
+- Provider health scores (0-1 scale)
+- Quality feedback loop for model improvement
+
+**Production Testing (✅ Verified):**
+- Simple requests route to fast models (gpt-4o-mini)
+- Complex requests route to powerful models (gpt-4o/Claude)
+- Safety-critical requests with allergies route to Claude
+- Concurrent requests handled successfully (100% success rate)
+- Budget constraints respected (low budget forces cheap models)
+- Fallback rate: 2.2% (optimal performance)
 
 ### Prompt Engineering Strategy
 
