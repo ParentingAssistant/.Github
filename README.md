@@ -47,6 +47,7 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 8. **Calendar Integration** - Add meal plans, bedtime routines, and chore schedules directly to iOS Calendar with EventKit (Step 36: Complete)
 9. **Multi-Agent Orchestrator** - Intent-based routing to specialized AI agents for optimal results
 10. **Smart Model Routing** - Dynamic LLM selection with automatic fallbacks and health monitoring (Step 38: Complete ✅ Tested)
+11. **Guided Onboarding** - 4-step wizard collecting kids, allergies, and bedtime preferences with beta cohort instrumentation (Step 40: Complete)
 
 ### Key Features
 
@@ -65,7 +66,7 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 ### User Experience
 
 ```
-Sign In → Configure Family Profile → Choose Feature (Meals/Chores/Routines) →
+Sign In → Guided Onboarding (Kids/Allergies/Bedtime) → Choose Feature (Meals/Chores/Routines) →
 AI Generates Plan in Real-Time → View Results → Save for Later → Schedule Notifications
 ```
 
@@ -1868,6 +1869,96 @@ class PantryVM: ObservableObject {
 - **Flexible Matching**: Handles different naming conventions
 - **Contextual Access**: Available where it's needed (meal planning)
 
+### Guided Onboarding & Beta Cohort Instrumentation (Step 40)
+
+**Status**: ✅ Complete - First-Run Experience with Analytics
+
+Implemented a 4-step guided onboarding wizard for new users with Prometheus metrics for tracking activation funnel:
+
+**Onboarding Flow**:
+```
+Welcome → Add Kids (Names/Ages) → Allergies/Preferences → Bedtime Preferences → Choose First Task
+```
+
+**Backend - Onboarding Defaults & Metrics**:
+```python
+# Profile defaults for new users
+def _ensure_onboarding_defaults(preferences: Dict[str, Any]) -> Dict[str, Any]:
+    if "onboarding_completed" not in preferences:
+        preferences["onboarding_completed"] = False
+    if "onboarding_version" not in preferences:
+        preferences["onboarding_version"] = 0
+    return preferences
+
+# Prometheus counters for activation tracking
+onboarding_started_total = Counter("onboarding_started_total", "Flows started", ["beta_cohort"])
+onboarding_completed_total = Counter("onboarding_completed_total", "Flows completed", ["beta_cohort"])
+first_plan_generated_total = Counter("first_plan_generated_total", "First plans", ["intent", "beta_cohort"])
+```
+
+**iOS - OnboardingFlowView**:
+```swift
+// 4-step wizard with progress indicator
+struct OnboardingFlowView: View {
+    @State private var step = 0  // 0=Welcome, 1=Kids, 2=Allergies, 3=Bedtime
+    @StateObject private var viewModel = OnboardingViewModel()
+
+    var body: some View {
+        VStack {
+            ProgressBar(step: step, total: 4)
+            switch step {
+            case 0: WelcomeStepView(onContinue: { step = 1 })
+            case 1: KidsStepView(viewModel: viewModel, onContinue: { step = 2 })
+            case 2: AllergiesStepView(viewModel: viewModel, onContinue: { step = 3 })
+            case 3: BedtimeStepView(viewModel: viewModel, onComplete: submitOnboarding)
+            }
+        }
+    }
+}
+```
+
+**OnboardingStateManager** (App-Wide Singleton):
+```swift
+@MainActor
+final class OnboardingStateManager: ObservableObject {
+    static let shared = OnboardingStateManager()
+    @Published var hasCompletedOnboarding: Bool = false
+    @Published var isCheckingOnboarding: Bool = true
+    @Published var shouldShowOnboarding: Bool = false
+
+    func checkOnboardingStatus() async {
+        // Check profile for onboarding_completed flag
+        // Set shouldShowOnboarding if not completed
+    }
+
+    func markOnboardingComplete() {
+        hasCompletedOnboarding = true
+        shouldShowOnboarding = false
+    }
+}
+```
+
+**Post-Onboarding Handoff**:
+- After completing onboarding, user chooses first task: "Plan Meals" or "Bedtime Routine"
+- Navigation bindings pass choice through RootView → HomeView
+- Automatic navigation to selected feature via `navigateToMeals` or `navigateToRoutines`
+
+**Profile View Integration**:
+- Shows "Setup complete" badge if onboarding done
+- Shows "Finish setup" button with re-run option if incomplete
+- Allows updating preferences by re-running onboarding flow
+
+**Activation Metrics**:
+- `onboarding_started_total{beta_cohort}` - Tracks wizard entry
+- `onboarding_completed_total{beta_cohort}` - Tracks successful completion
+- `first_plan_generated_total{intent, beta_cohort}` - Tracks first AI usage
+
+**User Benefits**:
+- **Personalized from Start**: AI knows family composition immediately
+- **Safety-First Setup**: Allergies captured before any meal suggestions
+- **Reduced Friction**: Clear path to first value (meal plan or routine)
+- **Re-entry Support**: Can update preferences anytime from Profile
+
 ### Automatic Token Refresh
 
 **Status**: ✅ Complete - Seamless Authentication
@@ -2246,7 +2337,7 @@ ParentingAssistant/
 │   │   │   ├── DesignSystem.swift   # DS.Colors, DS.Spacing, DS.Typography, DS.Radius
 │   │   │   └── DesignSystemComponents.swift  # DSButton, DSCard, ChatBubble
 │   │   ├── AppState/                # Global state (AppSession)
-│   │   ├── Features/                # Home, Chat, MealPlanner, BedtimeRoutine, Meals, Chores, Routines, Auth, Settings
+│   │   ├── Features/                # Home, Chat, MealPlanner, BedtimeRoutine, Meals, Chores, Routines, Auth, Settings, Onboarding
 │   │   ├── Services/                # SSEClient, AssistClient, APIClient, Auth, Keychain, Notifications
 │   │   ├── Models/                  # Data models, AssistModels
 │   │   └── Config/                  # AppConfig, FeatureFlags
@@ -2361,4 +2452,4 @@ Built by Ahmed M. - Learning AI/LLM engineering through hands-on projects.
 
 ---
 
-**Last Updated**: January 2025
+**Last Updated**: December 2025
