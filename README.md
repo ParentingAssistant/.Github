@@ -48,6 +48,7 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 9. **Multi-Agent Orchestrator** - Intent-based routing to specialized AI agents for optimal results
 10. **Smart Model Routing** - Dynamic LLM selection with automatic fallbacks and health monitoring (Step 38: Complete ✅ Tested)
 11. **Guided Onboarding** - 4-step wizard collecting kids, allergies, and bedtime preferences with beta cohort instrumentation (Step 40: Complete)
+12. **Consistent UX States** - Shared design system components for loading, empty, error, and success states across all screens (Step 41: Complete)
 
 ### Key Features
 
@@ -1959,6 +1960,59 @@ final class OnboardingStateManager: ObservableObject {
 - **Reduced Friction**: Clear path to first value (meal plan or routine)
 - **Re-entry Support**: Can update preferences anytime from Profile
 
+### Consistent UX State Components (Step 41)
+
+**Status**: ✅ Complete - Polished UX with Consistent State Handling
+
+Implemented shared design system components for consistent loading, empty, error, and success states across all screens:
+
+**New Shared Components** (DesignSystemComponents.swift):
+```swift
+// Error banner with optional retry callback
+DSErrorBannerView(message: "Could not load data") {
+    retryAction()
+}
+
+// Success confirmation banner
+DSSuccessBannerView(message: "Saved successfully!")
+
+// Inline loading indicator with message
+DSLoadingCardView(message: "Creating your meal plan...")
+
+// Full-screen loading indicator
+DSLoadingView(message: "Loading saved items...")
+
+// Generic empty state with optional action
+DSEmptyStateView(
+    icon: "tray",
+    title: "No saved items",
+    message: "Save meal plans to access later",
+    actionTitle: "Create Something",
+    action: { /* navigate */ }
+)
+```
+
+**Screen Integration**:
+- **HomeView** - `DSErrorBannerView` for dashboard errors with retry
+- **ChatView** - Error banner at top, simplified thinking indicator with ProgressView
+- **MealPlannerView** - Error/success/loading banners with retry callbacks
+- **BedtimeRoutineView** - Error/success/loading banners with retry callbacks
+- **ChoresView** - Error/success/loading banners with retry callbacks
+- **SavedArtifactsView** - `DSLoadingView`, `DSEmptyStateView`, `DSErrorBannerView`
+
+**Figma Plugin Updates**:
+- New "State Components" frame in Design System page
+- DSErrorBannerView, DSSuccessBannerView, DSLoadingCardView, DSEmptyStateView
+- PresetChip and PresetChipGroup components
+- FeatureHeaderView for feature screens
+- Updated all 6 screens with preset chips and feature headers
+
+**User Benefits**:
+- **Consistent Experience** - Same visual language across all error/loading states
+- **Actionable Errors** - Retry buttons on error banners to recover from failures
+- **Clear Feedback** - Success banners confirm user actions completed
+- **Professional Polish** - Unified design tokens for colors, spacing, and typography
+
 ### Automatic Token Refresh
 
 **Status**: ✅ Complete - Seamless Authentication
@@ -2193,12 +2247,13 @@ jobs:
 - Navigation patterns (TabView, NavigationStack)
 - Declarative UI with reactive updates
 
-✅ **Design System Implementation (Steps 23A-B)**
+✅ **Design System Implementation (Steps 23A-B, 41)**
 - Centralized design tokens (DesignSystem.swift) with DS.Colors, DS.Spacing, DS.Typography, DS.Radius
 - Reusable SwiftUI components (DSButton, DSCard, ChatBubble)
-- 4 core screens built with design system: Home, Chat, Meal Planner, Bedtime Routine
+- State components (DSErrorBannerView, DSSuccessBannerView, DSLoadingCardView, DSEmptyStateView)
+- 6 core screens built with design system: Home, Chat, Meal Planner, Bedtime Routine, Chores, Saved Items
 - Figma plugin for programmatic wireframe generation matching SwiftUI components
-- Design System page with button variants (primary/secondary/ghost), card examples, and chat bubbles
+- Design System page with buttons, cards, chat bubbles, state components, preset chips, feature headers
 
 ✅ **iOS-Backend Integration (Step 24)**
 - AssistClient wrapper for type-safe streaming API calls
