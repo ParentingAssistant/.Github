@@ -49,6 +49,8 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 10. **Smart Model Routing** - Dynamic LLM selection with automatic fallbacks and health monitoring (Step 38: Complete ✅ Tested)
 11. **Guided Onboarding** - 4-step wizard collecting kids, allergies, and bedtime preferences with beta cohort instrumentation (Step 40: Complete)
 12. **Consistent UX States** - Shared design system components for loading, empty, error, and success states across all screens (Step 41: Complete)
+13. **Timeline Visualization** - Visual timeline with step nodes and duration badges for bedtime routines (Step 42: Complete)
+14. **Human-Centered Microcopy** - Agentic, outcome-focused labels and friendly empty states across all screens (Step 43: Complete)
 
 ### Key Features
 
