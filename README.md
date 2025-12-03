@@ -17,9 +17,26 @@
 
 ---
 
+## App Preview
+
+<p align="center">
+  <img src="docs/screenshots/Home.png" width="200" alt="Home Screen" />
+  <img src="docs/screenshots/Meal Planner.png" width="200" alt="Meal Planner" />
+  <img src="docs/screenshots/Bedtime Routines.png" width="200" alt="Bedtime Routines" />
+  <img src="docs/screenshots/Weekly Chores.png" width="200" alt="Weekly Chores" />
+</p>
+<p align="center">
+  <img src="docs/screenshots/Chat.png" width="200" alt="Chat" />
+  <img src="docs/screenshots/Saved Items.png" width="200" alt="Saved Items" />
+  <img src="docs/screenshots/Profile.png" width="200" alt="Profile" />
+</p>
+
+---
+
 ## Table of Contents
 
 - [Deployment Status](#-deployment-status)
+- [App Preview](#app-preview)
 - [Product Overview](#product-overview)
 - [Technical Architecture](#technical-architecture)
 - [AI/LLM Technologies](#aillm-technologies)
