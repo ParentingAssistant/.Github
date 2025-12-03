@@ -51,6 +51,7 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 12. **Consistent UX States** - Shared design system components for loading, empty, error, and success states across all screens (Step 41: Complete)
 13. **Timeline Visualization** - Visual timeline with step nodes and duration badges for bedtime routines (Step 42: Complete)
 14. **Human-Centered Microcopy** - Agentic, outcome-focused labels and friendly empty states across all screens (Step 43: Complete)
+15. **Chat v2 - Streaming + Agent Cards** - Real-time token streaming, mission chips, artifact cards with save functionality (Step 44: Complete)
 
 ### Key Features
 
@@ -2014,6 +2015,49 @@ DSEmptyStateView(
 - **Actionable Errors** - Retry buttons on error banners to recover from failures
 - **Clear Feedback** - Success banners confirm user actions completed
 - **Professional Polish** - Unified design tokens for colors, spacing, and typography
+
+### Chat v2 - Streaming + Agent Cards (Step 44)
+
+**Status**: ✅ Complete - Real-Time AI Chat with Actionable Results
+
+Implemented comprehensive chat experience with real-time token streaming, mission chips for quick actions, and artifact cards that let users save AI-generated content directly from chat:
+
+**Backend - Token Streaming in All Agents**:
+```python
+# All agents now implement run_streaming() method
+async def run_streaming(
+    self, user_id: int, prompt: str, profile: dict, context: dict
+) -> AsyncGenerator[Tuple[str, Optional[Dict[str, Any]]], None]:
+    # Planning phase (non-streaming)
+    query = await self._planning_phase(prompt, profile)
+
+    # RAG retrieval (non-streaming)
+    results = await self._retrieval_phase(query)
+
+    # Synthesis phase (streaming)
+    async for token in stream_synthesis_routed(...):
+        yield (token, None)  # Emit each token
+
+    yield ("", final_result)  # Emit final result
+```
+
+**iOS - ChatView Enhancements**:
+- **Mission Chips**: Quick-action buttons for "Plan Meals", "Bedtime Help", "Household Help"
+- **Token Streaming**: Real-time token accumulation with typing indicator
+- **ArtifactSummaryCard**: Visual cards for structured results (meal plans, routines, chores)
+- **Save from Chat**: One-tap save button to persist artifacts via ArtifactsClient
+- **Intent-Based Detection**: Parses agent meta to detect artifact type and display appropriate card
+
+**Feature Views Integration**:
+- MealPlannerView, ChoresView, BedtimeRoutineView all display streaming tokens
+- Shows "Writing..." indicator during generation
+- Consistent streaming UX across all AI features
+
+**User Benefits**:
+- **Responsive Feel**: See AI response as it's generated, not after long wait
+- **Quick Actions**: Mission chips surface common tasks for one-tap access
+- **Actionable Results**: Save AI-generated content directly from chat
+- **Unified Experience**: Same streaming behavior across chat and feature views
 
 ### Automatic Token Refresh
 
