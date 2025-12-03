@@ -1412,6 +1412,8 @@ The iOS app is professionally packaged and distributed through Apple's official 
 
 **Status**: ✅ Complete - Automated Figma → Swift Workflow
 
+**🎨 [View Design System in Figma](https://www.figma.com/design/Fs048teXAsKZxzsaTBEPPP/Parenting-Assistant-%E2%80%93-Design-System?node-id=144-58&t=ifSrUn4XO1m5n6Gs-1)**
+
 The platform implements a sophisticated design system workflow that bridges Figma designs to SwiftUI implementation:
 
 **Step 20: Figma API Token Export**
