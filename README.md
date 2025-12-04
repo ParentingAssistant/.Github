@@ -66,8 +66,8 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 10. **Smart Model Routing** - Dynamic LLM selection with automatic fallbacks and health monitoring (Step 38: Complete ✅ Tested)
 11. **Guided Onboarding** - 4-step wizard collecting kids, allergies, and bedtime preferences with beta cohort instrumentation (Step 40: Complete)
 12. **Consistent UX States** - Shared design system components for loading, empty, error, and success states across all screens (Step 41: Complete)
-13. **Timeline Visualization** - Visual timeline with step nodes and duration badges for bedtime routines (Step 42: Complete)
-14. **Human-Centered Microcopy** - Agentic, outcome-focused labels and friendly empty states across all screens (Step 43: Complete)
+13. **Run Mode** - Interactive step-by-step routine execution with streak tracking, progress stats, and completion celebrations (Step 42: Complete)
+14. **Grocery Checklist** - Interactive shopping list with item check-off, aisle grouping, skip functionality, and automatic pantry sync on completion (Step 43: Complete)
 15. **Chat v2 - Streaming + Agent Cards** - Real-time token streaming, mission chips, artifact cards with save functionality (Step 44: Complete)
 
 ### Key Features
@@ -2034,6 +2034,169 @@ DSEmptyStateView(
 - **Actionable Errors** - Retry buttons on error banners to recover from failures
 - **Clear Feedback** - Success banners confirm user actions completed
 - **Professional Polish** - Unified design tokens for colors, spacing, and typography
+
+### Run Mode - Interactive Routine Execution (Step 42)
+
+**Status**: ✅ Complete - Step-by-Step Guidance with Streak Tracking
+
+Implemented interactive "Run Mode" for bedtime routines that guides parents through each step with timers, progress tracking, and gamification through streak counting:
+
+**Backend - Routine Run Tracking**:
+```python
+# Database Schema
+class RoutineRun(Base):
+    __tablename__ = "routine_runs"
+    id: Mapped[int]
+    user_id: Mapped[int]
+    artifact_id: Mapped[Optional[int]]  # Link to saved routine
+    status: Mapped[str]  # in_progress, completed, abandoned
+    started_at: Mapped[datetime]
+    completed_at: Mapped[Optional[datetime]]
+    steps_completed: Mapped[int]
+    steps_total: Mapped[int]
+
+# API Endpoints
+POST /v1/routine-runs/start - Start a new routine run
+POST /v1/routine-runs/{id}/step - Complete a step
+POST /v1/routine-runs/{id}/complete - Finish the routine
+POST /v1/routine-runs/{id}/abandon - Cancel the routine
+GET /v1/routine-runs/active - Get current active run
+GET /v1/routine-runs/stats - Get streak and completion stats
+```
+
+**iOS - RoutineRunView**:
+```swift
+// Interactive step-by-step execution
+struct RoutineRunView: View {
+    @StateObject private var client = RoutineRunClient()
+    @State private var currentStepIndex = 0
+
+    var body: some View {
+        VStack {
+            // Progress indicator
+            ProgressBar(current: currentStepIndex, total: steps.count)
+
+            // Current step card with timer
+            StepCard(step: steps[currentStepIndex])
+
+            // Complete step button
+            DSButton("Done", icon: "checkmark") {
+                completeStep()
+            }
+        }
+    }
+}
+```
+
+**Streak & Stats System**:
+- **Current Streak**: Consecutive days with completed routines
+- **Longest Streak**: Personal best streak count
+- **Completion Rate**: Percentage of started routines that were completed
+- **Home Screen Card**: Flame icon with streak count and motivational message
+
+**Production Features**:
+- ✅ Real-time step progress synced to backend
+- ✅ Optimistic UI updates with error rollback
+- ✅ Streak calculation with timezone awareness
+- ✅ Home screen streak card with gamification
+- ✅ Completion celebration with confetti animation
+
+**User Benefits**:
+- **Guided Experience**: Step-by-step instructions during bedtime
+- **Motivation**: Streak tracking encourages consistency
+- **Progress Visibility**: See completion rate over time
+- **Flexibility**: Abandon and restart routines as needed
+
+### Grocery Checklist - Interactive Shopping (Step 43)
+
+**Status**: ✅ Complete - Shopping List with Pantry Sync
+
+Implemented interactive grocery shopping checklist that lets users check off items while shopping, with automatic pantry synchronization when completed:
+
+**Backend - Grocery Session Management**:
+```python
+# Database Schema
+class GrocerySession(Base):
+    __tablename__ = "grocery_sessions"
+    id: Mapped[int]
+    user_id: Mapped[int]
+    artifact_id: Mapped[Optional[int]]  # Link to meal plan
+    status: Mapped[str]  # in_progress, completed, abandoned
+    items: Mapped[list]  # JSONB array of items
+    items_total: Mapped[int]
+    items_checked: Mapped[int]
+    auto_add_to_pantry: Mapped[bool]
+    started_at: Mapped[datetime]
+    completed_at: Mapped[Optional[datetime]]
+
+# API Endpoints
+POST /v1/grocery-sessions/start - Start shopping session
+POST /v1/grocery-sessions/{id}/check - Check/uncheck item
+POST /v1/grocery-sessions/{id}/skip - Skip item (not available)
+POST /v1/grocery-sessions/{id}/complete - Finish & sync to pantry
+POST /v1/grocery-sessions/{id}/abandon - Cancel session
+GET /v1/grocery-sessions/active - Get active session
+GET /v1/grocery-sessions/stats/summary - Shopping statistics
+```
+
+**iOS - GroceryChecklistView**:
+```swift
+// Interactive shopping checklist
+struct GroceryChecklistView: View {
+    @StateObject private var client = GrocerySessionClient()
+    @State private var session: GrocerySession?
+
+    var body: some View {
+        VStack {
+            // Progress header with percentage
+            ProgressHeader(checked: session.itemsChecked, total: session.itemsTotal)
+
+            // Items grouped by aisle
+            ForEach(sortedAisles) { aisle in
+                Section(header: AisleHeader(aisle)) {
+                    ForEach(itemsInAisle(aisle)) { item in
+                        GroceryItemRow(
+                            item: item,
+                            onCheck: { checkItem(item) },
+                            onSkip: { skipItem(item) }
+                        )
+                    }
+                }
+            }
+
+            // Complete/Finish button
+            BottomBar(onComplete: completeSession)
+        }
+    }
+}
+```
+
+**Pantry Sync on Completion**:
+- Checked items automatically added to user's pantry
+- Skipped items excluded from pantry sync
+- Returns list of items added for confirmation
+
+**SwiftUI Timing Fix**:
+- Fixed `fullScreenCover` closure capturing empty array at render time
+- Uses optional array pattern: `groceryChecklistItems: [GrocerySessionItem]? = nil`
+- Computed binding derives `isPresented` from optional state
+- Items unwrapped inside closure body for correct values
+
+**Production Features**:
+- ✅ Real-time item check/uncheck with optimistic updates
+- ✅ Aisle-based grouping with smart sort order
+- ✅ Skip functionality for unavailable items
+- ✅ Progress percentage with visual bar
+- ✅ Auto-abandon existing sessions on new start
+- ✅ Completion sheet showing items added to pantry
+- ✅ Resume shopping from Home screen card
+
+**User Benefits**:
+- **Hands-Free Shopping**: Check items as you shop
+- **Organized by Aisle**: Navigate store efficiently
+- **Pantry Integration**: Purchased items auto-added to inventory
+- **Flexible**: Skip items, finish early, or abandon and restart
+- **Progress Tracking**: See completion percentage in real-time
 
 ### Chat v2 - Streaming + Agent Cards (Step 44)
 
