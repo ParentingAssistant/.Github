@@ -2363,6 +2363,35 @@ jobs:
 - Audience validation
 - Issuer validation
 - Secure key storage (env vars for prod, files for dev)
+- User ID derived from JWT, not request body
+
+### API Endpoint Protection
+
+All data-modifying and AI endpoints require JWT authentication:
+- `/v1/assist/stream` - AI assistant (user_id from JWT)
+- `/v1/memory/*` - User profiles and memories
+- `/v1/artifacts/*` - Saved meal plans and routines
+- `/v1/households/*` - Household preferences
+- `/v1/rag/search/*` - RAG search endpoints
+- `/v1/routine-runs/*` - Routine tracking
+- `/v1/grocery-sessions/*` - Shopping sessions
+- `/v1/push/*` - Push notifications
+
+**Public Endpoints** (No Auth Required):
+- `/v1/health` - Health check
+- `/v1/auth/apple` - Authentication
+- `/v1/auth/refresh-v2` - Token refresh
+
+### iOS Debug Protection
+
+All debug features are wrapped in `#if DEBUG` compiler directives:
+- Debug print statements (token values, API responses)
+- API host override functionality
+- AI assist toggle in settings
+- Token print to console feature
+- Manual token refresh button
+
+These features are automatically excluded from TestFlight and App Store builds.
 
 ### Data Security
 
@@ -2374,6 +2403,19 @@ jobs:
 - Keychain encryption (iOS)
 - PostgreSQL encryption at rest (DigitalOcean managed)
 - Environment variables for secrets
+
+### Environment Variables for Security
+
+```bash
+# Required for production
+ALLOWED_ORIGINS=https://your-app-domain.com  # CORS origins (no wildcard in prod)
+JWT_PRIVATE_PEM=...                          # RS256 private key for JWT signing
+JWT_PUBLIC_PEM=...                           # RS256 public key for JWT verification
+ADMIN_ALLOWLIST_USER_IDS=1,2                 # Admin user IDs
+
+# Optional
+METRICS_BEARER_TOKEN=...                     # Protect /v1/metrics endpoint
+```
 
 ### Safety Features
 
