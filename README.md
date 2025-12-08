@@ -1,6 +1,8 @@
-# Parenting Assistant
+# Zia (Parenting Assistant)
 
 > An AI-powered family planning platform with real-time streaming, multi-modal assistance, and production-grade infrastructure.
+
+**Now called Zia** - The app has been rebranded from "Parenting Assistant" to "Zia" for a friendlier, more memorable identity.
 
 ## 🚀 Deployment Status
 
@@ -50,9 +52,9 @@
 
 ## Product Overview
 
-### What is Parenting Assistant?
+### What is Zia?
 
-Parenting Assistant is a comprehensive family planning platform that uses AI to help families with:
+Zia (formerly Parenting Assistant) is a comprehensive family planning platform that uses AI to help families with:
 
 1. **Meal Planning** - AI-powered weekly meal plans with automatic grocery lists organized by aisle (Step 29: Complete)
 2. **Pantry Management** - Track household inventory with smart grocery filtering that removes items you already have (Step 37: Complete)
@@ -69,6 +71,10 @@ Parenting Assistant is a comprehensive family planning platform that uses AI to 
 13. **Run Mode** - Interactive step-by-step routine execution with streak tracking, progress stats, and completion celebrations (Step 42: Complete)
 14. **Grocery Checklist** - Interactive shopping list with item check-off, aisle grouping, skip functionality, and automatic pantry sync on completion (Step 43: Complete)
 15. **Chat v2 - Streaming + Agent Cards** - Real-time token streaming, mission chips, artifact cards with save functionality (Step 44: Complete)
+16. **Multi-Turn Conversations** - Persistent conversation memory with message history across sessions (Complete)
+17. **Push Notifications** - APNs integration for reminders and updates with user preferences (Complete)
+18. **Account Deletion** - Full data deletion for App Store compliance (Guideline 5.1.1) with two-step confirmation (Complete)
+19. **App Store Compliance** - Support and privacy pages, removed beta labels (Complete)
 
 ### Key Features
 
@@ -2729,7 +2735,7 @@ open ParentingAssistant.xcodeproj
 ### AI/LLM
 - [ ] Token-by-token streaming from LLM (vs orchestrator-level)
 - [ ] Fine-tuned models for meal planning
-- [ ] Multi-turn conversations with memory
+- [x] Multi-turn conversations with memory ✅ Complete
 - [ ] Image generation for meal photos
 - [ ] Voice input/output
 
