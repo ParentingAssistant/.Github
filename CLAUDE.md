@@ -320,7 +320,7 @@ JWT_TOKEN="<valid-jwt>" curl -H "Authorization: Bearer $JWT_TOKEN" \
 ## Observability
 
 **Admin Dashboard:**
-- URL: `https://parenting-assistant-platform-39b47.ondigitalocean.app/v1/admin/dashboard`
+- URL: `https://parenting-assistant-platform-39b47.ondigitalocean.app/v1/usage/admin/dashboard`
 - Shows: System health, daily costs, top users, model usage
 - No auth required for dashboard endpoints (public)
 
