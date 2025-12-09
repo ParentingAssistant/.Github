@@ -4,6 +4,17 @@
 
 **Now called Zia** - The app has been rebranded from "Parenting Assistant" to "Zia" for a friendlier, more memorable identity.
 
+## 🎉 Live on the App Store!
+
+**Zia is officially available on the Apple App Store!**
+
+This represents a complete journey from idea to production - a full-stack AI platform with:
+- FastAPI backend with multi-provider LLM orchestration (Claude + GPT-4)
+- RAG-powered meal planning with 70+ recipes via pgvector
+- Native iOS app with SwiftUI and real-time streaming
+- Production infrastructure on DigitalOcean with PostgreSQL and Redis
+- App Store compliance including privacy policy and account deletion
+
 ## 🚀 Deployment Status
 
 **✅ LIVE IN PRODUCTION**
@@ -12,10 +23,10 @@
   - URL: https://parenting-assistant-platform-39b47.ondigitalocean.app
   - Status: Running with managed PostgreSQL + Redis
 
-- **iOS App**: Distributed via TestFlight
-  - Status: Available for beta testing
-  - Platform: iOS 16+
-  - Distribution: Apple TestFlight
+- **iOS App**: Available on the App Store
+  - Status: Live and approved
+  - Platform: iOS 17+
+  - Distribution: Apple App Store
 
 ---
 
@@ -1398,37 +1409,38 @@ rm /tmp/restored-spec.yaml
 
 **Documentation**: Comprehensive recovery procedures in `.do/README-SECRETS.md`
 
-### iOS TestFlight Distribution
+### iOS App Store Distribution
 
-**Status**: ✅ Live on TestFlight
+**Status**: ✅ Live on App Store
 
-The iOS app is professionally packaged and distributed through Apple's official beta testing platform.
+The iOS app is officially available on the Apple App Store after successful review and approval.
 
 **Distribution Details**:
-- **Platform**: iOS 16.0+
-- **Distribution Method**: TestFlight (Apple's Beta Testing)
+- **Platform**: iOS 17.0+
+- **Distribution Method**: Apple App Store
 - **Signing**: Automatic signing with Xcode
 - **App Icon**: 1024x1024 production-ready icon
 - **Bundle ID**: `com.ParentingAssistant.ParentingAssistantiOS`
 
-**TestFlight Features**:
-- Beta testing with up to 10,000 external testers
-- Automatic update notifications
-- Crash reporting and analytics
-- Pre-release testing before App Store submission
+**App Store Features**:
+- Public availability for all iOS users
+- Automatic updates via App Store
+- Crash reporting and analytics via App Store Connect
+- User ratings and reviews
 
-**Build Process**:
+**Build & Release Process**:
 1. Archive app in Xcode (Product → Archive)
 2. Distribute to App Store Connect
 3. Wait for processing (5-15 minutes)
-4. Configure build in TestFlight
-5. Invite testers via email
+4. Submit for App Review
+5. Released to App Store upon approval
 
-**Current Build**:
+**Current Release**:
 - Features: AI meal planning, chore scheduling, routines, artifact saving & history
 - Authentication: Apple Sign In with JWT
 - Streaming: Real-time SSE responses from backend
-- Offline Mode: Sample data fallback
+- Push Notifications: APNs integration for reminders
+- Account Deletion: App Store Guideline 5.1.1 compliance
 - Data Persistence: Save and retrieve meal plans and routines
 
 ### Design System Integration (Steps 20-22)
