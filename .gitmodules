@@ -1,0 +1,3 @@
+[submodule "parenting-assistant-business"]
+	path = parenting-assistant-business
+	url = git@github.com:ParentingAssistant/parenting-assistant-business.git
