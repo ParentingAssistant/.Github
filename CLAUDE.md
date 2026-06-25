@@ -5,9 +5,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Project Overview
 
 Parenting Assistant is a production AI-powered family planning platform with:
-- **Backend**: FastAPI with multi-agent LLM orchestrator, deployed on DigitalOcean App Platform
+- **Backend**: FastAPI with multi-agent LLM orchestrator, deployed on Vercel (Fluid Compute)
 - **iOS App**: SwiftUI with custom SSE streaming, distributed via TestFlight
-- **Production URL**: https://parenting-assistant-platform-39b47.ondigitalocean.app
+- **Production URL**: https://parenting-assistant-api.vercel.app
 
 ## Repository Structure
 
@@ -204,23 +204,25 @@ async def event_gen():
 
 ## Critical Deployment Rules
 
-### ⚠️ DigitalOcean Secrets Management
+### Vercel Deployment
 
-**NEVER run:** `doctl apps update --spec .do/app.yaml`
-- This **WIPES ALL SECRET VALUES** from production
+**Production URL:** https://parenting-assistant-api.vercel.app
+**Project:** `parenting-assistant-api` on Vercel (CLI deploys, no GitHub integration)
 
-**Instead:**
-1. Use DigitalOcean web UI: Settings → App-Level Environment Variables
-2. Or run backup script before changes: `.do/backup-secrets.sh "passphrase"`
-
-**Safe Commands:**
+**Deploy:**
 ```bash
-doctl apps spec get <app-id>               # View current config with secrets
-doctl apps list-deployments <app-id>       # View deployments
-doctl apps create-deployment <app-id>      # Trigger deploy without config change
+vercel deploy --prod --yes    # Deploy current branch to production
 ```
 
-**Recovery:** See `.do/README-SECRETS.md` for full backup/restore procedures
+**Environment Variables:** Managed via `vercel env` CLI or Vercel dashboard.
+~40 vars configured (API keys, JWT PEMs, feature flags).
+
+**Cron Job:** `/v1/internal/process-evals` runs daily (Hobby plan; upgrade to Pro for 2-min interval).
+
+**Key constraints:**
+- `fastapi-limiter` is bypassed on Vercel (incompatible with vendored FastAPI). Vercel provides edge-level DDoS protection.
+- `VERCEL=1` env var triggers serverless-specific behavior (NullPool, no rate limiter init).
+- Git commits must use `ahmed.khaled.a.mohamed@gmail.com` — Spotify email triggers `TEAM_ACCESS_REQUIRED` blocks.
 
 ### Router Prefix Pattern
 
@@ -312,36 +314,42 @@ JWT_TOKEN="<valid-jwt>" python scripts/test_usage_api.py
 
 **Meal Planning Smoke Test:**
 ```bash
-JWT_TOKEN="<valid-jwt>" curl -H "Authorization: Bearer $JWT_TOKEN" \
-  "https://parenting-assistant-platform-39b47.ondigitalocean.app/v1/assist/stream" \
-  -d '{"user_id":1,"goal":"Plan dinners","mode":"meals"}'
+JWT_TOKEN="<valid-jwt>" curl -N -H "Authorization: Bearer $JWT_TOKEN" \
+  "https://parenting-assistant-api.vercel.app/v1/assist/stream" \
+  -H "Content-Type: application/json" \
+  -d '{"goal":"Plan dinners","mode":"meals"}'
 ```
 
 ## Observability
 
 **Admin Dashboard:**
-- URL: `https://parenting-assistant-platform-39b47.ondigitalocean.app/v1/usage/admin/dashboard`
+- URL: `https://parenting-assistant-api.vercel.app/v1/usage/admin/dashboard`
 - Shows: System health, daily costs, top users, model usage
 - No auth required for dashboard endpoints (public)
 
 **Metrics Export:**
-- Prometheus: `/v1/metrics`
-- Grafana Agent scrapes every 15 seconds
-- OpenTelemetry traces exported to configured endpoint
+- Prometheus: `/v1/metrics` (in-process counters, reset on cold start)
+- OpenTelemetry traces exported to configured OTLP endpoint
 
 **Logs:**
 ```bash
-make logs  # Local
-doctl apps logs <app-id> --follow  # Production
+make logs                                    # Local (docker-compose)
+vercel logs parenting-assistant-api.vercel.app -x   # Production (Vercel)
+```
+
+**Verification:**
+```bash
+bash scripts/verify_vercel.sh               # Run 45-endpoint test suite
+bash scripts/verify_vercel.sh --compare     # Compare Vercel vs DO latency
 ```
 
 ## Common Pitfalls
 
 1. **Missing Router Prefix**: Always add `prefix="/resource"` to APIRouter
 2. **Expired JWT**: Use TokenRefreshService, not manual refresh
-3. **Secrets Wiped**: Never use `doctl apps update --spec` without backup
-4. **Migration Conflicts**: Always pull latest before `make autogen`
-5. **iOS State Loss**: Use `@ObservedObject` for AppSession, not `@StateObject`
-6. **SSE Buffer Overflow**: Parse incrementally, don't accumulate full response
-7. **Allergy Safety**: Always check profile for dietary restrictions in meal agent
-8. **Profile Format**: Use normalized structure, don't assume old format exists
+3. **Migration Conflicts**: Always pull latest before `make autogen`
+4. **iOS State Loss**: Use `@ObservedObject` for AppSession, not `@StateObject`
+5. **SSE Buffer Overflow**: Parse incrementally, don't accumulate full response
+6. **Allergy Safety**: Always check profile for dietary restrictions in meal agent
+7. **Profile Format**: Use normalized structure, don't assume old format exists
+8. **Vercel Git Email**: Commits must use personal gmail, not Spotify email
